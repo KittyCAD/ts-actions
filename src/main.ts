@@ -4,13 +4,12 @@ import {inspect} from 'util'
 
 const ORG = 'KittyCAD'
 
+const sanitise = (str: string): string => str.replace('"', '')
+
 async function run(): Promise<void> {
   try {
     const token = core.getInput('token')
     const issueNodeId = core.getInput('issue-node')
-    const repo = core.getInput('repository')
-
-    core.debug(`issue: ${issueNodeId}, repo: ${repo}`)
 
     const octokit = github.getOctokit(token)
 
@@ -46,7 +45,9 @@ async function run(): Promise<void> {
     } = await octokit.graphql(
       `
       mutation {
-        addProjectNextItem(input: {projectId: "${project_id}" contentId: "${issueNodeId}"}) {
+        addProjectNextItem(input: {projectId: "${sanitise(
+          project_id
+        )}" contentId: "${sanitise(issueNodeId)}"}) {
           projectNextItem {
             id
           }
@@ -56,7 +57,6 @@ async function run(): Promise<void> {
     )
 
     core.debug(inspect(mutationResponse))
-
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }

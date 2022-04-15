@@ -39,14 +39,13 @@ const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const util_1 = __nccwpck_require__(1669);
 const ORG = 'KittyCAD';
+const sanitise = (str) => str.replace('"', '');
 function run() {
     var _a, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const token = core.getInput('token');
             const issueNodeId = core.getInput('issue-node');
-            const repo = core.getInput('repository');
-            core.debug(`issue: ${issueNodeId}, repo: ${repo}`);
             const octokit = github.getOctokit(token);
             const projectsReponse = yield octokit.graphql(`
     query{
@@ -70,7 +69,7 @@ function run() {
             core.debug(`Project: ${(0, util_1.inspect)(project_id)}`);
             const mutationResponse = yield octokit.graphql(`
       mutation {
-        addProjectNextItem(input: {projectId: "${project_id}" contentId: "${issueNodeId}"}) {
+        addProjectNextItem(input: {projectId: "${sanitise(project_id)}" contentId: "${sanitise(issueNodeId)}"}) {
           projectNextItem {
             id
           }

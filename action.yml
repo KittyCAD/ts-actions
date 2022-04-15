@@ -8,9 +8,6 @@ inputs:
   issue-node:
     required: true
     description: 'issue to be put into the project'
-  repository:
-    required: true
-    description: 'the current repo'
 runs:
   using: 'node16'
   main: 'dist/index.js'
