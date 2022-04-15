@@ -1,0 +1,10 @@
+name: Add issues to all tasks
+
+on:
+  issues:
+    types: [opened, reopened]
+jobs:
+  createCard:
+    uses: ./.github/workflows/add-card-to-project.yml
+    secrets:
+      token: ${{ secrets.GLOBAL_PAT }}
