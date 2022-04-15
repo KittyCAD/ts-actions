@@ -12,4 +12,4 @@ jobs:
         with:
           token: ${{ secrets.GLOBAL_PAT }}
           issue-number: ${{ github.event.issue.id }}"
-          repo: ${{ github.event.repository.id }}"
+          repository: ${{ github.event.repository.id }}"
