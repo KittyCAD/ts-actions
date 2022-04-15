@@ -39,13 +39,15 @@ const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const util_1 = __nccwpck_require__(1669);
 const ORG = 'KittyCAD';
+const PROJECT_NAME = 'All Tasks';
+// Github string inputs seem to have a trailing ", breaking the graphQL queries
 const sanitise = (str) => str.replace('"', '');
 function run() {
     var _a, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const token = core.getInput('token');
-            const issueNodeId = core.getInput('issue-node');
+            const issueNodeId = sanitise(core.getInput('issue-node'));
             const octokit = github.getOctokit(token);
             const projectsReponse = yield octokit.graphql(`
     query{
@@ -63,13 +65,13 @@ function run() {
             const projects = (_b = (_a = projectsReponse === null || projectsReponse === void 0 ? void 0 : projectsReponse.organization) === null || _a === void 0 ? void 0 : _a.projectsNext) === null || _b === void 0 ? void 0 : _b.nodes;
             if (!projects)
                 throw new Error("Couldn't find any projects");
-            const project_id = (_c = projects.find(({ title }) => title === 'All Tasks')) === null || _c === void 0 ? void 0 : _c.id;
+            const project_id = (_c = projects.find(({ title }) => title === PROJECT_NAME)) === null || _c === void 0 ? void 0 : _c.id;
             if (!project_id)
-                throw new Error("Couldn't get the 'All Tasks' project");
+                throw new Error(`Couldn't get the '${PROJECT_NAME}' project`);
             core.debug(`Project: ${(0, util_1.inspect)(project_id)}`);
             const mutationResponse = yield octokit.graphql(`
       mutation {
-        addProjectNextItem(input: {projectId: "${sanitise(project_id)}" contentId: "${sanitise(issueNodeId)}"}) {
+        addProjectNextItem(input: {projectId: "${project_id}" contentId: "${issueNodeId}"}) {
           projectNextItem {
             id
           }

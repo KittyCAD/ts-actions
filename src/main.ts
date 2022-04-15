@@ -3,13 +3,15 @@ import * as github from '@actions/github'
 import {inspect} from 'util'
 
 const ORG = 'KittyCAD'
+const PROJECT_NAME = 'All Tasks'
 
+// Github string inputs seem to have a trailing ", breaking the graphQL queries
 const sanitise = (str: string): string => str.replace('"', '')
 
 async function run(): Promise<void> {
   try {
     const token = core.getInput('token')
-    const issueNodeId = core.getInput('issue-node')
+    const issueNodeId = sanitise(core.getInput('issue-node'))
 
     const octokit = github.getOctokit(token)
 
@@ -34,9 +36,10 @@ async function run(): Promise<void> {
     const projects = projectsReponse?.organization?.projectsNext?.nodes
     if (!projects) throw new Error("Couldn't find any projects")
 
-    const project_id = projects.find(({title}) => title === 'All Tasks')?.id
+    const project_id = projects.find(({title}) => title === PROJECT_NAME)?.id
 
-    if (!project_id) throw new Error("Couldn't get the 'All Tasks' project")
+    if (!project_id)
+      throw new Error(`Couldn't get the '${PROJECT_NAME}' project`)
 
     core.debug(`Project: ${inspect(project_id)}`)
 
@@ -45,9 +48,7 @@ async function run(): Promise<void> {
     } = await octokit.graphql(
       `
       mutation {
-        addProjectNextItem(input: {projectId: "${sanitise(
-          project_id
-        )}" contentId: "${sanitise(issueNodeId)}"}) {
+        addProjectNextItem(input: {projectId: "${project_id}" contentId: "${issueNodeId}"}) {
           projectNextItem {
             id
           }
