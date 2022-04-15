@@ -6,9 +6,9 @@
 
 This action will automatically add issues to our "All Tasks" project
 
-It uses typescript, but since actions need to be javascript the build files are committed as well in dist and lib. We're using Vercel's `ncc` to bundle dependancies along with the build code.
+It uses typescript, but since actions need to be javascript the build files are committed as well in `dist` and `lib`. We're using Vercel's `ncc` to bundle dependancies along with the build code.
 
-Because this interacts with the Github api, and our Github resources, the development story is little rough. Talk to @Ire-dev for tips
+Because this interacts with the Github api, and our Github resources, the development story is little rough. Talk to @Irev-dev for tips
 
 This repo is public as is a requirement for Actions.
 
