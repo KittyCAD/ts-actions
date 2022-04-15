@@ -1,13 +1,14 @@
 name: Add issues to all tasks
 
 on:
-  workflow_call:
-    secrets:
-      token:
-        required: true
+  issues:
+    types: [opened, reopened]
 jobs:
   createCard:
-    uses: ./
-    with:
-      token: ${{ secrets.token }}
-      issue-node: ${{ github.event.issue.node_id }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./
+        with:
+          token: ${{ secrets.GLOBAL_PAT }}
+          issue-node: ${{ github.event.issue.node_id }}"
