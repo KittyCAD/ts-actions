@@ -2,10 +2,15 @@ name: 'Your name here'
 description: 'Provide a description here'
 author: 'Your name or organization here'
 inputs:
-  milliseconds: # change this
+  token: # change this
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+    description: 'Github PAT'
+  issue-number:
+    required: true
+    description: 'issue to be put into the project'
+  repository:
+    required: true
+    description: 'the current repo'
 runs:
   using: 'node16'
   main: 'dist/index.js'

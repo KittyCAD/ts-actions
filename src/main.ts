@@ -17,6 +17,9 @@ async function run(): Promise<void> {
     const {data: projects} = await octokit.rest.projects.listForOrg({
       org: ORG
     })
+
+    core.debug(JSON.stringify(projects))
+
     const project = projects.find(({name}) => name === 'All Tasks')
 
     if (!project) throw new Error("Couldn't get the 'All Tasks' project")
