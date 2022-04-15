@@ -7,10 +7,7 @@ on:
         required: true
 jobs:
   createCard:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: ./
-        with:
-          token: ${{ secrets.token }}
-          issue-node: ${{ github.event.issue.node_id }}"
+    uses: ./
+    with:
+      token: ${{ secrets.token }}
+      issue-node: ${{ github.event.issue.node_id }}"
