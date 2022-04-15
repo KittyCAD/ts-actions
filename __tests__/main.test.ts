@@ -7,8 +7,9 @@ import {expect, test} from '@jest/globals'
 test('test runs', () => {
   expect(1).toBe(1)
   // process.env['INPUT_TOKEN'] = process.env.token || 'github PAT'
-  // process.env['INPUT_ISSUE-NUMBER'] = '1'
+  // process.env['INPUT_ISSUE-NODE'] = '1'
   // process.env['INPUT_REPOSITORY'] = 'docs'
+  // process.env['ACTIONS_STEP_DEBUG'] = 'true'
   // const np = process.execPath
   // const ip = path.join(__dirname, '..', 'lib', 'main.js')
   // const options: cp.ExecFileSyncOptions = {

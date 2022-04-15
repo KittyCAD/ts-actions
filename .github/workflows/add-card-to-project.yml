@@ -11,5 +11,5 @@ jobs:
       - uses: ./
         with:
           token: ${{ secrets.GLOBAL_PAT }}
-          issue-number: ${{ github.event.issue.id }}"
+          issue-node: ${{ github.event.issue.node_id }}"
           repository: ${{ github.event.repository.id }}"

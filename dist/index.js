@@ -40,39 +40,43 @@ const github = __importStar(__nccwpck_require__(5438));
 const util_1 = __nccwpck_require__(1669);
 const ORG = 'KittyCAD';
 function run() {
+    var _a, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const token = core.getInput('token');
-            const issueNumber = Number(core.getInput('issue-number'));
+            const issueNodeId = core.getInput('issue-node');
             const repo = core.getInput('repository');
-            core.debug(`issue: ${issueNumber}, repo: ${repo}`);
+            core.debug(`issue: ${issueNodeId}, repo: ${repo}`);
             const octokit = github.getOctokit(token);
-            const { data: projects } = yield octokit.rest.projects.listForOrg({
-                org: ORG
-            });
-            core.debug(JSON.stringify(projects));
-            const project = projects.find(({ name }) => name === 'All Tasks');
-            if (!project)
+            const projectsReponse = yield octokit.graphql(`
+    query{
+      organization(login: "${ORG}"){
+        projectsNext(first: 20) {
+          nodes {
+            id
+            title
+          }
+        }
+      }
+    }
+    `);
+            const projects = (_b = (_a = projectsReponse === null || projectsReponse === void 0 ? void 0 : projectsReponse.user) === null || _a === void 0 ? void 0 : _a.projectsNext) === null || _b === void 0 ? void 0 : _b.nodes;
+            if (!projects)
+                throw new Error("Couldn't any projects");
+            const project_id = (_c = projects.find(({ title }) => title === 'All Tasks')) === null || _c === void 0 ? void 0 : _c.id;
+            if (!project_id)
                 throw new Error("Couldn't get the 'All Tasks' project");
-            core.debug(`Project: ${(0, util_1.inspect)(project)}`);
-            const { data: columns } = yield octokit.rest.projects.listColumns({
-                project_id: project.id
-            });
-            core.debug(`Columns: ${(0, util_1.inspect)(columns)}`);
-            const column = columns.find(({ name }) => name === 'No Status');
-            if (!column)
-                throw new Error("The 'No Status' column couldn't be found.");
-            const { data: issue } = yield octokit.rest.issues.get({
-                owner: ORG,
-                repo,
-                issue_number: issueNumber
-            });
-            const { data: card } = yield octokit.rest.projects.createCard({
-                column_id: column.id,
-                content_id: issue.id,
-                content_type: 'Issue'
-            });
-            core.debug(`Card: ${(0, util_1.inspect)(card)}`);
+            core.debug(`Project: ${(0, util_1.inspect)(project_id)}`);
+            const mutationResponse = yield octokit.graphql(`
+      mutation {
+        addProjectNextItem(input: {projectId: "${project_id}" contentId: "${issueNodeId}"}) {
+          projectNextItem {
+            id
+          }
+        }
+      }
+    `);
+            core.debug((0, util_1.inspect)(mutationResponse));
         }
         catch (error) {
             if (error instanceof Error)

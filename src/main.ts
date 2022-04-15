@@ -7,46 +7,55 @@ const ORG = 'KittyCAD'
 async function run(): Promise<void> {
   try {
     const token = core.getInput('token')
-    const issueNumber = Number(core.getInput('issue-number'))
+    const issueNodeId = core.getInput('issue-node')
     const repo = core.getInput('repository')
 
-    core.debug(`issue: ${issueNumber}, repo: ${repo}`)
+    core.debug(`issue: ${issueNodeId}, repo: ${repo}`)
 
     const octokit = github.getOctokit(token)
 
-    const {data: projects} = await octokit.rest.projects.listForOrg({
-      org: ORG
-    })
+    const projectsReponse: {
+      user: {projectsNext: {nodes: {id: string; title: string}[]}}
+    } = await octokit.graphql(
+      `
+    query{
+      organization(login: "${ORG}"){
+        projectsNext(first: 20) {
+          nodes {
+            id
+            title
+          }
+        }
+      }
+    }
+    `
+    )
 
-    core.debug(JSON.stringify(projects))
+    const projects = projectsReponse?.user?.projectsNext?.nodes
+    if (!projects) throw new Error("Couldn't any projects")
 
-    const project = projects.find(({name}) => name === 'All Tasks')
+    const project_id = projects.find(({title}) => title === 'All Tasks')?.id
 
-    if (!project) throw new Error("Couldn't get the 'All Tasks' project")
+    if (!project_id) throw new Error("Couldn't get the 'All Tasks' project")
 
-    core.debug(`Project: ${inspect(project)}`)
+    core.debug(`Project: ${inspect(project_id)}`)
 
-    const {data: columns} = await octokit.rest.projects.listColumns({
-      project_id: project.id
-    })
-    core.debug(`Columns: ${inspect(columns)}`)
+    const mutationResponse: {
+      addProjectNextItem: {projectNextItem: {id: string}}
+    } = await octokit.graphql(
+      `
+      mutation {
+        addProjectNextItem(input: {projectId: "${project_id}" contentId: "${issueNodeId}"}) {
+          projectNextItem {
+            id
+          }
+        }
+      }
+    `
+    )
 
-    const column = columns.find(({name}) => name === 'No Status')
+    core.debug(inspect(mutationResponse))
 
-    if (!column) throw new Error("The 'No Status' column couldn't be found.")
-
-    const {data: issue} = await octokit.rest.issues.get({
-      owner: ORG,
-      repo,
-      issue_number: issueNumber
-    })
-
-    const {data: card} = await octokit.rest.projects.createCard({
-      column_id: column.id,
-      content_id: issue.id,
-      content_type: 'Issue'
-    })
-    core.debug(`Card: ${inspect(card)}`)
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }

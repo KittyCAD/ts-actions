@@ -5,7 +5,7 @@ inputs:
   token: # change this
     required: true
     description: 'Github PAT'
-  issue-number:
+  issue-node:
     required: true
     description: 'issue to be put into the project'
   repository:
