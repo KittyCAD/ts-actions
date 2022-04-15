@@ -15,7 +15,7 @@ async function run(): Promise<void> {
     const octokit = github.getOctokit(token)
 
     const projectsReponse: {
-      user: {projectsNext: {nodes: {id: string; title: string}[]}}
+      organization: {projectsNext: {nodes: {id: string; title: string}[]}}
     } = await octokit.graphql(
       `
     query{
@@ -30,9 +30,10 @@ async function run(): Promise<void> {
     }
     `
     )
+    core.debug(`Project: ${inspect(projectsReponse)}`)
 
-    const projects = projectsReponse?.user?.projectsNext?.nodes
-    if (!projects) throw new Error("Couldn't any projects")
+    const projects = projectsReponse?.organization?.projectsNext?.nodes
+    if (!projects) throw new Error("Couldn't find any projects")
 
     const project_id = projects.find(({title}) => title === 'All Tasks')?.id
 

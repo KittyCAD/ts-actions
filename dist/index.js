@@ -60,9 +60,10 @@ function run() {
       }
     }
     `);
-            const projects = (_b = (_a = projectsReponse === null || projectsReponse === void 0 ? void 0 : projectsReponse.user) === null || _a === void 0 ? void 0 : _a.projectsNext) === null || _b === void 0 ? void 0 : _b.nodes;
+            core.debug(`Project: ${(0, util_1.inspect)(projectsReponse)}`);
+            const projects = (_b = (_a = projectsReponse === null || projectsReponse === void 0 ? void 0 : projectsReponse.organization) === null || _a === void 0 ? void 0 : _a.projectsNext) === null || _b === void 0 ? void 0 : _b.nodes;
             if (!projects)
-                throw new Error("Couldn't any projects");
+                throw new Error("Couldn't find any projects");
             const project_id = (_c = projects.find(({ title }) => title === 'All Tasks')) === null || _c === void 0 ? void 0 : _c.id;
             if (!project_id)
                 throw new Error("Couldn't get the 'All Tasks' project");
