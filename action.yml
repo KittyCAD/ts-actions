@@ -8,6 +8,9 @@ inputs:
   issue-node:
     required: true
     description: 'issue to be put into the project'
+  project-number:
+    required: false
+    description: 'int that appears in project url'
 runs:
   using: 'node16'
   main: 'dist/index.js'

@@ -1,4 +1,4 @@
-name: Add issues to all tasks
+name: "Add issues to 'KittyCode project'"
 
 on:
   issues:
@@ -12,3 +12,4 @@ jobs:
         with:
           token: ${{ secrets.GLOBAL_PAT }}
           issue-node: ${{ github.event.issue.node_id }}"
+          project-number: 4
