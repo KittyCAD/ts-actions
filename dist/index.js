@@ -39,7 +39,9 @@ const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const util_1 = __nccwpck_require__(1669);
 const ORG = 'KittyCAD';
-const PROJECT_NAME = 'All Tasks';
+// project number is the int that appears in the project url
+// i.e. https://github.com/orgs/KittyCAD/projects/{PROJECT_NUMBER}
+const PROJECT_NUMBER = 2;
 // Github string inputs seem to have a trailing ", breaking the graphQL queries
 const sanitise = (str) => str.replace('"', '');
 function run() {
@@ -48,26 +50,27 @@ function run() {
         try {
             const token = core.getInput('token');
             const issueNodeId = sanitise(core.getInput('issue-node'));
+            const projectNumber = Number(sanitise(core.getInput('project-number'))) || PROJECT_NUMBER;
             const octokit = github.getOctokit(token);
-            const projectsReponse = yield octokit.graphql(`
+            const projectsResponse = yield octokit.graphql(`
     query{
       organization(login: "${ORG}"){
         projectsNext(first: 20) {
           nodes {
             id
-            title
+            number
           }
         }
       }
     }
     `);
-            core.debug(`Project: ${(0, util_1.inspect)(projectsReponse)}`);
-            const projects = (_b = (_a = projectsReponse === null || projectsReponse === void 0 ? void 0 : projectsReponse.organization) === null || _a === void 0 ? void 0 : _a.projectsNext) === null || _b === void 0 ? void 0 : _b.nodes;
+            core.debug(`Project: ${(0, util_1.inspect)(projectsResponse)}`);
+            const projects = (_b = (_a = projectsResponse === null || projectsResponse === void 0 ? void 0 : projectsResponse.organization) === null || _a === void 0 ? void 0 : _a.projectsNext) === null || _b === void 0 ? void 0 : _b.nodes;
             if (!projects)
                 throw new Error("Couldn't find any projects");
-            const project_id = (_c = projects.find(({ title }) => title === PROJECT_NAME)) === null || _c === void 0 ? void 0 : _c.id;
+            const project_id = (_c = projects.find(({ number }) => number === projectNumber)) === null || _c === void 0 ? void 0 : _c.id;
             if (!project_id)
-                throw new Error(`Couldn't get the '${PROJECT_NAME}' project`);
+                throw new Error(`Couldn't get the #'${projectNumber}' project`);
             core.debug(`Project: ${(0, util_1.inspect)(project_id)}`);
             const mutationResponse = yield octokit.graphql(`
       mutation {
