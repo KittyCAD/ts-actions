@@ -1,0 +1,14 @@
+name: "Show visual-diffs in comment"
+
+on:
+    pull_request:
+
+jobs:
+  createCard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./show-visual-diffs-in-comment/
+        with:
+          token: ${{ secrets.GLOBAL_PAT }}
+          filestack-key: "AAEy5aY8TKG4J5K84Rn8iz"
