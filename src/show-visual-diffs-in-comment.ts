@@ -11,7 +11,8 @@ async function run(): Promise<void> {
     const filestackKey = core.getInput('filestack-key')
 
     const client = filestack.init(filestackKey)
-    const paths = await globby('**/*diff.png')
+    let paths = await globby('**/*diff.png')
+    paths = paths.filter(path => !path.includes('retry'))
     const uploadPromises = paths.map(async path => {
       const file = await readFile(path)
       const response = await client.upload(file)
@@ -34,13 +35,14 @@ async function run(): Promise<void> {
       ...mdLines
     ].join('\n')
     const octokit = github.getOctokit(token)
-
-    await octokit.rest.issues.createComment({
-      issue_number: github?.context?.payload?.pull_request?.number || 0,
-      repo: github.context.repo.repo,
-      owner: github.context.repo.owner,
-      body: commentBody
-    })
+    if (mdLines.length) {
+      await octokit.rest.issues.createComment({
+        issue_number: github?.context?.payload?.pull_request?.number || 0,
+        repo: github.context.repo.repo,
+        owner: github.context.repo.owner,
+        body: commentBody
+      })
+    }
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }

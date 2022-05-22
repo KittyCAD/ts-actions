@@ -48,7 +48,8 @@ function run() {
             const token = core.getInput('token');
             const filestackKey = core.getInput('filestack-key');
             const client = filestack.init(filestackKey);
-            const paths = yield (0, globby_1.globby)('**/*diff.png');
+            let paths = yield (0, globby_1.globby)('**/*diff.png');
+            paths = paths.filter(path => !path.includes('retry'));
             const uploadPromises = paths.map((path) => __awaiter(this, void 0, void 0, function* () {
                 const file = yield (0, promises_1.readFile)(path);
                 const response = yield client.upload(file);
@@ -70,12 +71,14 @@ function run() {
                 ...mdLines
             ].join('\n');
             const octokit = github.getOctokit(token);
-            yield octokit.rest.issues.createComment({
-                issue_number: ((_c = (_b = (_a = github === null || github === void 0 ? void 0 : github.context) === null || _a === void 0 ? void 0 : _a.payload) === null || _b === void 0 ? void 0 : _b.pull_request) === null || _c === void 0 ? void 0 : _c.number) || 0,
-                repo: github.context.repo.repo,
-                owner: github.context.repo.owner,
-                body: commentBody
-            });
+            if (mdLines.length) {
+                yield octokit.rest.issues.createComment({
+                    issue_number: ((_c = (_b = (_a = github === null || github === void 0 ? void 0 : github.context) === null || _a === void 0 ? void 0 : _a.payload) === null || _b === void 0 ? void 0 : _b.pull_request) === null || _c === void 0 ? void 0 : _c.number) || 0,
+                    repo: github.context.repo.repo,
+                    owner: github.context.repo.owner,
+                    body: commentBody
+                });
+            }
         }
         catch (error) {
             if (error instanceof Error)
