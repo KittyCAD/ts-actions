@@ -20,4 +20,4 @@ jobs:
         env:
             PRNUM: ${{ github.event.pull_request.number }}
             BODY: ${{ steps.getbody.outputs.body }}
-        run: gh pr comment $PRNUM --body $BODY
+        run: gh pr comment $PRNUM --body "$BODY"
