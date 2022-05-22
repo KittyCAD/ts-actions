@@ -7,7 +7,10 @@ inputs:
     description: 'Github PAT'
   filestack-key:
     required: true
-    description: 'filestack keyy'
+    description: 'filestack key'
+  bucket-key:
+    required: true
+    description: 'bucket key'
 runs:
   using: 'node16'
   main: '../dist/show-visual-diffs-in-comment/index.js'
