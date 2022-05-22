@@ -11,7 +11,7 @@ jobs:
       - uses: ./show-visual-diffs-in-comment/
         id: getbody
         with:
-          filestack-key: "AAEy5aY8TKG4J5K84Rn8iz"
+          filestack-key: ${{ secrets.FILESTACK_KEY }}
       - name: setup gh cli
         run: |
             echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
