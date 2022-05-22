@@ -13,6 +13,7 @@ jobs:
         with:
           filestack-key: ${{ secrets.FILESTACK_KEY }}
           bucket-key: ${{ secrets.BUCKET_KEY }}
+          gcloud-credentials-json: ${{ secrets.GCLOUD_CREDENTIALS_JSON }}
       - name: setup gh cli
         run: |
             echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token

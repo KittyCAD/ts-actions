@@ -8,6 +8,9 @@ inputs:
   filestack-key:
     required: true
     description: 'filestack key'
+  gcloud-credentials-json:
+    required: true
+    description: 'gcloud auth'
   bucket-key:
     required: true
     description: 'bucket key'

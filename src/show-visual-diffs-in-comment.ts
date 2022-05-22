@@ -17,19 +17,20 @@ import {readFile} from 'node:fs/promises'
 // Imports the Google Cloud client library
 
 // Creates a client
-const storage = new Storage()
 
-async function uploadFile(bucketName: string, filePath: string): Promise<void> {
-  const response = await storage.bucket(bucketName).upload(filePath)
+// async function uploadFile(bucketName: string, filePath: string): Promise<void> {
+//   const storage = new Storage({credentials: credentialsJson})
+//   const response = await storage.bucket(bucketName).upload(filePath)
 
-  console.log(`${filePath} uploaded to ${bucketName}`)
-  console.log(`gcloud response: ${response}`)
-}
+//   console.log(`${filePath} uploaded to ${bucketName}`)
+//   console.log(`gcloud response: ${response}`)
+// }
 
 async function run(): Promise<void> {
   try {
     const filestackKey = core.getInput('filestack-key')
     const bucketName = core.getInput('bucket-key')
+    const credentialsJson = JSON.parse(core.getInput('gcloud-credentials-json'))
 
     const client = filestack.init(filestackKey)
     let paths = await globby('**/*diff.png')
@@ -41,7 +42,12 @@ async function run(): Promise<void> {
       let summaryPath = path.split('/').pop() || ''
       summaryPath = summaryPath?.replace('diff.png', '').split('-').join(' ')
 
-      await uploadFile(bucketName, path)
+      // await uploadFile(bucketName, path)
+      const storage = new Storage({credentials: credentialsJson})
+      const gcloudResponse = await storage.bucket(bucketName).upload(path)
+      core.debug(
+        `upload gcloud response for ${path}: ${inspect(gcloudResponse)}`
+      )
 
       return `
 <details>
