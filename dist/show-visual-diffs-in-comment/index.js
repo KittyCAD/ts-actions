@@ -58,8 +58,9 @@ function run() {
                 return `
 <details>
   <summary>${summaryPath}</summary>
-      **${path}** 
+      ${path}
 </details>
+
 ![${path}](${response.url})`;
             }));
             const mdLines = yield Promise.all(uploadPromises);

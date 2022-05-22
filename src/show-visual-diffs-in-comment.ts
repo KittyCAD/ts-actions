@@ -21,8 +21,9 @@ async function run(): Promise<void> {
       return `
 <details>
   <summary>${summaryPath}</summary>
-      **${path}** 
+      ${path}
 </details>
+
 ![${path}](${response.url})`
     })
     const mdLines = await Promise.all(uploadPromises)
