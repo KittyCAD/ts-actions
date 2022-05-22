@@ -65,6 +65,7 @@ function run() {
             const commentBody = [
                 '### Ch-ch-ch-ch-changes',
                 'Turn and face the strange\n',
+                'leave a comment with `--update-snapshots` to accept the changes\n',
                 ...mdLines
             ].join('\n');
             core.setOutput('body', commentBody);
