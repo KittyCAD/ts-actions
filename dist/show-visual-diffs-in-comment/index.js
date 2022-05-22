@@ -43,7 +43,6 @@ const promises_1 = __nccwpck_require__(2004);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            // const token = core.getInput('token')
             const filestackKey = core.getInput('filestack-key');
             const client = filestack.init(filestackKey);
             let paths = yield (0, globby_1.globby)('**/*diff.png');
@@ -69,15 +68,6 @@ function run() {
                 ...mdLines
             ].join('\n');
             core.setOutput('body', commentBody);
-            // const octokit = github.getOctokit(token)
-            // if (mdLines.length) {
-            //   await octokit.rest.issues.createComment({
-            //     issue_number: github?.context?.payload?.pull_request?.number || 0,
-            //     repo: github.context.repo.repo,
-            //     owner: github.context.actor,
-            //     body: commentBody
-            //   })
-            // }
         }
         catch (error) {
             if (error instanceof Error)
