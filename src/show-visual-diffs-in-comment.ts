@@ -39,7 +39,7 @@ async function run(): Promise<void> {
       await octokit.rest.issues.createComment({
         issue_number: github?.context?.payload?.pull_request?.number || 0,
         repo: github.context.repo.repo,
-        owner: github.context.repo.owner,
+        owner: github.context.actor,
         body: commentBody
       })
     }
