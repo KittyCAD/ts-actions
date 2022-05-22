@@ -56,7 +56,11 @@ function run() {
                 return `![${path}](${response.url})`;
             }));
             const mdLines = yield Promise.all(uploadPromises);
-            const commentBody = ['### Snapshot Diffs\n', ...mdLines].join('\n');
+            const commentBody = [
+                '### Ch-ch-ch-ch-changes',
+                'Turn and face the strange\n',
+                ...mdLines
+            ].join('\n');
             const octokit = github.getOctokit(token);
             yield octokit.rest.issues.createComment({
                 issue_number: ((_c = (_b = (_a = github === null || github === void 0 ? void 0 : github.context) === null || _a === void 0 ? void 0 : _a.payload) === null || _b === void 0 ? void 0 : _b.pull_request) === null || _c === void 0 ? void 0 : _c.number) || 0,

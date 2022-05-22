@@ -20,7 +20,11 @@ async function run(): Promise<void> {
     })
     const mdLines = await Promise.all(uploadPromises)
 
-    const commentBody = ['### Snapshot Diffs\n', ...mdLines].join('\n')
+    const commentBody = [
+      '### Ch-ch-ch-ch-changes',
+      'Turn and face the strange\n',
+      ...mdLines
+    ].join('\n')
     const octokit = github.getOctokit(token)
 
     await octokit.rest.issues.createComment({

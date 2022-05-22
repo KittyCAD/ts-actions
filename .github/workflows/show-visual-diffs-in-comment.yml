@@ -1,7 +1,6 @@
 name: "Show visual-diffs in comment"
 
 on:
-    push:
     pull_request:
 
 jobs:
