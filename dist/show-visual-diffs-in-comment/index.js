@@ -53,7 +53,14 @@ function run() {
                 const file = yield (0, promises_1.readFile)(path);
                 const response = yield client.upload(file);
                 core.debug(`upload response for ${path}: ${(0, util_1.inspect)(response)}`);
-                return `\nimg: **${path}**\n![${path}](${response.url})`;
+                let summaryPath = path.split('/').pop() || '';
+                summaryPath = summaryPath === null || summaryPath === void 0 ? void 0 : summaryPath.replace('diff.png', '').split('-').join(' ');
+                return `
+<details>
+  <summary>${summaryPath}</summary>
+      **${path}** 
+</details>
+![${path}](${response.url})`;
             }));
             const mdLines = yield Promise.all(uploadPromises);
             const commentBody = [

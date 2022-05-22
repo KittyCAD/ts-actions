@@ -16,7 +16,14 @@ async function run(): Promise<void> {
       const file = await readFile(path)
       const response = await client.upload(file)
       core.debug(`upload response for ${path}: ${inspect(response)}`)
-      return `\nimg: **${path}**\n![${path}](${response.url})`
+      let summaryPath = path.split('/').pop() || ''
+      summaryPath = summaryPath?.replace('diff.png', '').split('-').join(' ')
+      return `
+<details>
+  <summary>${summaryPath}</summary>
+      **${path}** 
+</details>
+![${path}](${response.url})`
     })
     const mdLines = await Promise.all(uploadPromises)
 
