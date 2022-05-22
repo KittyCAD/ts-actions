@@ -12,6 +12,7 @@ jobs:
         id: getbody
         with:
           filestack-key: ${{ secrets.FILESTACK_KEY }}
+          bucket-key: ${{ secrets.BUCKET_KEY }}
       - name: setup gh cli
         run: |
             echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
