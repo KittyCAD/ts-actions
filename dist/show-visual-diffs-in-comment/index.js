@@ -53,7 +53,7 @@ function run() {
                 const file = yield (0, promises_1.readFile)(path);
                 const response = yield client.upload(file);
                 core.debug(`upload response for ${path}: ${(0, util_1.inspect)(response)}`);
-                return `![${path}](${response.url})`;
+                return `\nimg: **${path}**\n![${path}](${response.url})`;
             }));
             const mdLines = yield Promise.all(uploadPromises);
             const commentBody = [

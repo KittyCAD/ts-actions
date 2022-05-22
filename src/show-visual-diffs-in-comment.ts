@@ -16,7 +16,7 @@ async function run(): Promise<void> {
       const file = await readFile(path)
       const response = await client.upload(file)
       core.debug(`upload response for ${path}: ${inspect(response)}`)
-      return `![${path}](${response.url})`
+      return `\nimg: **${path}**\n![${path}](${response.url})`
     })
     const mdLines = await Promise.all(uploadPromises)
 
