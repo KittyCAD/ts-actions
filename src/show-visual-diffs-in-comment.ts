@@ -3,7 +3,7 @@ import * as filestack from 'filestack-js'
 import {Storage} from '@google-cloud/storage'
 import {globby} from 'globby'
 import {inspect} from 'util'
-import {readFile} from 'node:fs/promises'
+import {readFile, writeFile} from 'node:fs/promises'
 
 // The ID of your GCS bucket
 // const bucketName = 'your-unique-bucket-name'
@@ -30,7 +30,10 @@ async function run(): Promise<void> {
   try {
     const filestackKey = core.getInput('filestack-key')
     const bucketName = core.getInput('bucket-key')
-    const credentialsJson = JSON.parse(core.getInput('gcloud-credentials-json'))
+    const credentialsJson = core.getInput('gcloud-credentials-json')
+
+    const jsonPathname = './credential_google.json'
+    await writeFile(jsonPathname, credentialsJson, 'ascii')
 
     const client = filestack.init(filestackKey)
     let paths = await globby('**/*diff.png')
@@ -43,7 +46,7 @@ async function run(): Promise<void> {
       summaryPath = summaryPath?.replace('diff.png', '').split('-').join(' ')
 
       // await uploadFile(bucketName, path)
-      const storage = new Storage({credentials: credentialsJson})
+      const storage = new Storage({keyFilename: jsonPathname})
       const gcloudResponse = await storage.bucket(bucketName).upload(path)
       core.debug(
         `upload gcloud response for ${path}: ${inspect(gcloudResponse)}`
