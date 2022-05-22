@@ -36,6 +36,12 @@ async function run(): Promise<void> {
     await writeFile(jsonPathname, credentialsJson, 'ascii')
 
     const client = filestack.init(filestackKey)
+    const creds = JSON.parse(credentialsJson)
+    const storage = new Storage({
+      credentials: creds,
+      projectId: creds.project_id
+    })
+    // const storage = new Storage({keyFilename: jsonPathname})
     let paths = await globby('**/*diff.png')
     paths = paths.filter(path => !path.includes('retry'))
     const uploadPromises = paths.map(async path => {
@@ -46,7 +52,6 @@ async function run(): Promise<void> {
       summaryPath = summaryPath?.replace('diff.png', '').split('-').join(' ')
 
       // await uploadFile(bucketName, path)
-      const storage = new Storage({keyFilename: jsonPathname})
       const gcloudResponse = await storage.bucket(bucketName).upload(path)
       core.debug(
         `upload gcloud response for ${path}: ${inspect(gcloudResponse)}`
@@ -66,7 +71,7 @@ async function run(): Promise<void> {
       '### Ch-ch-ch-ch-changes',
       '#### Turn and face the strange',
       '---',
-      'leave a comment with `--update-snapshots` to accept the changes\n',
+      'If these changes are intentional, leave a comment with `--update-snapshots` to commit new reference snapshots\n',
       ...mdLines
     ].join('\n')
 
