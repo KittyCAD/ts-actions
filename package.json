@@ -27,7 +27,6 @@
   "dependencies": {
     "@actions/core": "^1.6.0",
     "@actions/github": "^5.0.1",
-    "cloudinary": "^1.30.0",
     "filestack-js": "^3.25.0",
     "globby": "^13.1.1"
   },
