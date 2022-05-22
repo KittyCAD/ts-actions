@@ -29,7 +29,8 @@ async function run(): Promise<void> {
 
     const commentBody = [
       '### Ch-ch-ch-ch-changes',
-      'Turn and face the strange\n',
+      '#### Turn and face the strange',
+      '---',
       'leave a comment with `--update-snapshots` to accept the changes\n',
       ...mdLines
     ].join('\n')
