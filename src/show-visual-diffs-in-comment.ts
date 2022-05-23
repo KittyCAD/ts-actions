@@ -22,7 +22,7 @@ async function run(): Promise<void> {
       const summaryPath = fileName?.replace('diff.png', '').split('-').join(' ')
       const [gcloudResponse] = await storage.bucket(bucketName).upload(path, {
         contentType: 'image/png',
-        destination: `${github.context.repo.repo}-${github.context.sha}-${fileName}`
+        destination: `${github.context.repo.repo}-${fileName}-sha-${github.context.sha}`
       })
       core.debug(
         `upload gcloud response for ${path}: ${inspect(gcloudResponse)}`
