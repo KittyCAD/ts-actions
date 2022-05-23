@@ -13,10 +13,10 @@ async function run(): Promise<void> {
     const gCredentials = JSON.parse(core.getInput('gcloud-credentials-json'))
 
     const client = filestack.init(filestackKey)
-    const upload = new Storage({
+    const storage = new Storage({
       credentials: gCredentials,
       projectId: gCredentials.project_id
-    }).bucket(bucketName).upload
+    })
 
     let paths = await globby('**/*diff.png')
     paths = paths.filter(path => !path.includes('retry'))
@@ -27,7 +27,8 @@ async function run(): Promise<void> {
       let summaryPath = path.split('/').pop() || ''
       summaryPath = summaryPath?.replace('diff.png', '').split('-').join(' ')
 
-      const gcloudResponse = await upload(path)
+      core.debug(`storage: ${inspect(storage)}`)
+      const gcloudResponse = await storage.bucket(bucketName).upload(path)
       core.debug(
         `upload gcloud response for ${path}: ${inspect(gcloudResponse)}`
       )
