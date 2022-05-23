@@ -49,7 +49,7 @@ async function run(): Promise<void> {
       'If these changes are intentional, leave a comment with `--update-snapshots` to commit new reference snapshots\n',
       ...mdLines
     ].join('\n')
-    // important note: this action does not handle the `--update-snapshots` comment
+    // important note: This action does not handle the `--update-snapshots` comment
 
     core.setOutput('body', commentBody)
   } catch (error) {
