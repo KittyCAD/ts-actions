@@ -2,15 +2,9 @@ name: 'Show visual diffs in comment'
 description: 'Takes visual diff images created by playwright, uploads them externally, so they can be included again as markdown images in a PR comment'
 author: 'KittyCAD'
 inputs:
-  token:
-    required: true
-    description: 'Github PAT'
-  filestack-key:
-    required: true
-    description: 'filestack key'
   gcloud-credentials-json:
     required: true
-    description: 'gcloud auth'
+    description: gcloud auth for bucket, it's where the playwright diff images are stored.
 runs:
   using: 'node16'
   main: '../dist/show-visual-diffs-in-comment/index.js'
