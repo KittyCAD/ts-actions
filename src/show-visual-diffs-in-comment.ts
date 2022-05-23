@@ -3,45 +3,21 @@ import * as filestack from 'filestack-js'
 import {Storage} from '@google-cloud/storage'
 import {globby} from 'globby'
 import {inspect} from 'util'
-import {readFile, writeFile} from 'node:fs/promises'
+import {readFile} from 'node:fs/promises'
 
-// The ID of your GCS bucket
-// const bucketName = 'your-unique-bucket-name'
-
-// The path to your file to upload
-// const filePath = 'path/to/your/file'
-
-// // The new ID for your GCS file
-// const destFileName = 'your-new-file-name'
-
-// Imports the Google Cloud client library
-
-// Creates a client
-
-// async function uploadFile(bucketName: string, filePath: string): Promise<void> {
-//   const storage = new Storage({credentials: credentialsJson})
-//   const response = await storage.bucket(bucketName).upload(filePath)
-
-//   console.log(`${filePath} uploaded to ${bucketName}`)
-//   console.log(`gcloud response: ${response}`)
-// }
+const bucketName = 'visual-regression-image-bucket'
 
 async function run(): Promise<void> {
   try {
     const filestackKey = core.getInput('filestack-key')
-    const bucketName = core.getInput('bucket-key')
-    const credentialsJson = core.getInput('gcloud-credentials-json')
-
-    const jsonPathname = './credential_google.json'
-    await writeFile(jsonPathname, credentialsJson, 'ascii')
+    const gCredentials = JSON.parse(core.getInput('gcloud-credentials-json'))
 
     const client = filestack.init(filestackKey)
-    const creds = JSON.parse(credentialsJson)
-    const storage = new Storage({
-      credentials: creds,
-      projectId: creds.project_id
-    })
-    // const storage = new Storage({keyFilename: jsonPathname})
+    const upload = new Storage({
+      credentials: gCredentials,
+      projectId: gCredentials.project_id
+    }).bucket(bucketName).upload
+
     let paths = await globby('**/*diff.png')
     paths = paths.filter(path => !path.includes('retry'))
     const uploadPromises = paths.map(async path => {
@@ -51,8 +27,7 @@ async function run(): Promise<void> {
       let summaryPath = path.split('/').pop() || ''
       summaryPath = summaryPath?.replace('diff.png', '').split('-').join(' ')
 
-      // await uploadFile(bucketName, path)
-      const gcloudResponse = await storage.bucket(bucketName).upload(path)
+      const gcloudResponse = await upload(path)
       core.debug(
         `upload gcloud response for ${path}: ${inspect(gcloudResponse)}`
       )
@@ -74,6 +49,7 @@ async function run(): Promise<void> {
       'If these changes are intentional, leave a comment with `--update-snapshots` to commit new reference snapshots\n',
       ...mdLines
     ].join('\n')
+    // important note: this action does not handle the `--update-snapshots` comment
 
     core.setOutput('body', commentBody)
   } catch (error) {
