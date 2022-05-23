@@ -1,18 +1,15 @@
 import * as core from '@actions/core'
-import * as filestack from 'filestack-js'
+import * as github from '@actions/github'
 import {Storage} from '@google-cloud/storage'
 import {globby} from 'globby'
 import {inspect} from 'util'
-import {readFile} from 'node:fs/promises'
 
 const bucketName = 'visual-regression-image-bucket'
 
 async function run(): Promise<void> {
   try {
-    const filestackKey = core.getInput('filestack-key')
     const gCredentials = JSON.parse(core.getInput('gcloud-credentials-json'))
 
-    const client = filestack.init(filestackKey)
     const storage = new Storage({
       credentials: gCredentials,
       projectId: gCredentials.project_id
@@ -21,14 +18,12 @@ async function run(): Promise<void> {
     let paths = await globby('**/*diff.png')
     paths = paths.filter(path => !path.includes('retry'))
     const uploadPromises = paths.map(async path => {
-      const file = await readFile(path)
-      const response = await client.upload(file)
-      core.debug(`upload response for ${path}: ${inspect(response)}`)
-      let summaryPath = path.split('/').pop() || ''
-      summaryPath = summaryPath?.replace('diff.png', '').split('-').join(' ')
-      const [gcloudResponse] = await storage
-        .bucket(bucketName)
-        .upload(path, {contentType: 'image/png'})
+      const fileName = path.split('/').pop() || ''
+      const summaryPath = fileName?.replace('diff.png', '').split('-').join(' ')
+      const [gcloudResponse] = await storage.bucket(bucketName).upload(path, {
+        contentType: 'image/png',
+        destination: `${github.context.repo.repo}-${github.context.sha}-${fileName}`
+      })
       core.debug(
         `upload gcloud response for ${path}: ${inspect(gcloudResponse)}`
       )
