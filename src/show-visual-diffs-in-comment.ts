@@ -26,9 +26,9 @@ async function run(): Promise<void> {
       core.debug(`upload response for ${path}: ${inspect(response)}`)
       let summaryPath = path.split('/').pop() || ''
       summaryPath = summaryPath?.replace('diff.png', '').split('-').join(' ')
-
-      core.debug(`storage: ${inspect(storage)}`)
-      const gcloudResponse = await storage.bucket(bucketName).upload(path)
+      const [gcloudResponse] = await storage
+        .bucket(bucketName)
+        .upload(path, {contentType: 'image/png'})
       core.debug(
         `upload gcloud response for ${path}: ${inspect(gcloudResponse)}`
       )
@@ -39,7 +39,7 @@ async function run(): Promise<void> {
       ${path}
 </details>
 
-![${path}](${response.url})`
+![${path}](${gcloudResponse.metadata.mediaLink})`
     })
     const mdLines = await Promise.all(uploadPromises)
 
