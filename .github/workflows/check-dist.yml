@@ -38,17 +38,11 @@ jobs:
           npm run build
           npm run package
 
-      - name: Compare the expected and actual dist/ directories
-        run: |
-          if [ "$(git diff --ignore-space-at-eol dist/ | wc -l)" -gt "0" ]; then
-            echo "Detected uncommitted changes after build.  See status below:"
-            git diff
-            exit 1
-          fi
-        id: diff
-
+      - name: Check for modified files
+        id: git-check
+        run: echo ::set-output name=modified::$(if git diff-index --ignore-submodules --quiet HEAD -- dist/.; then echo "false"; else echo "true"; fi)
       - name: Commit changes in dist, if any
-        if: ${{ failure() && steps.diff.conclusion == 'failure' }}
+        if: steps.git-check.outputs.modified == 'true'
         run: |
             git add dist/.
             git config --local user.email "github-actions[bot]@users.noreply.github.com"
