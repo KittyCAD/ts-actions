@@ -45,9 +45,13 @@ jobs:
           fi
         id: diff
 
-      # If index.js was different than expected, upload the expected version as an artifact
-      - uses: actions/upload-artifact@v2
+      - name: Commit changes in dist, if any
         if: ${{ failure() && steps.diff.conclusion == 'failure' }}
-        with:
-          name: dist
-          path: dist/
+        run: |
+            git add dist/.
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+            git fetch origin
+            git commit -m "Updating build files in dist/"
+            git push origin ${{github.event.pull_request.head.ref }}
