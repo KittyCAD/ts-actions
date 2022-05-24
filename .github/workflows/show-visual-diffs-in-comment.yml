@@ -4,11 +4,19 @@ on:
     pull_request:
 
 jobs:
-  createCard:
+  comment-visual-diffs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: ./show-visual-diffs-in-comment/
+        id: getbody
         with:
-          token: ${{ secrets.GLOBAL_PAT }}
-          filestack-key: "AAEy5aY8TKG4J5K84Rn8iz"
+          gcloud-credentials-json: ${{ secrets.GCLOUD_CREDENTIALS_JSON }}
+      - name: setup gh cli
+        run: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+      - name: comment diff
+        env:
+            PRNUM: ${{ github.event.pull_request.number }}
+            BODY: ${{ steps.getbody.outputs.body }}
+        run: gh pr comment $PRNUM --body "$BODY"

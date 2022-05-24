@@ -1,48 +1,53 @@
 import * as core from '@actions/core'
-import * as filestack from 'filestack-js'
 import * as github from '@actions/github'
+import {Storage} from '@google-cloud/storage'
 import {globby} from 'globby'
 import {inspect} from 'util'
-import {readFile} from 'node:fs/promises'
+
+const bucketName = 'visual-regression-image-bucket'
 
 async function run(): Promise<void> {
   try {
-    const token = core.getInput('token')
-    const filestackKey = core.getInput('filestack-key')
+    const gCredentials = JSON.parse(core.getInput('gcloud-credentials-json'))
 
-    const client = filestack.init(filestackKey)
+    const storage = new Storage({
+      credentials: gCredentials,
+      projectId: gCredentials.project_id
+    })
+
     let paths = await globby('**/*diff.png')
     paths = paths.filter(path => !path.includes('retry'))
     const uploadPromises = paths.map(async path => {
-      const file = await readFile(path)
-      const response = await client.upload(file)
-      core.debug(`upload response for ${path}: ${inspect(response)}`)
-      let summaryPath = path.split('/').pop() || ''
-      summaryPath = summaryPath?.replace('diff.png', '').split('-').join(' ')
+      const fileName = path.split('/').pop() || ''
+      const summaryPath = fileName?.replace('diff.png', '').split('-').join(' ')
+      const [gcloudResponse] = await storage.bucket(bucketName).upload(path, {
+        contentType: 'image/png',
+        destination: `${github.context.repo.repo}-${fileName}-sha-${github.context.sha}`
+      })
+      core.debug(
+        `upload gcloud response for ${path}: ${inspect(gcloudResponse)}`
+      )
+
       return `
 <details>
   <summary>${summaryPath}</summary>
       ${path}
 </details>
 
-![${path}](${response.url})`
+![${path}](${gcloudResponse.metadata.mediaLink})`
     })
     const mdLines = await Promise.all(uploadPromises)
 
     const commentBody = [
       '### Ch-ch-ch-ch-changes',
-      'Turn and face the strange\n',
+      '#### Turn and face the strange',
+      '---',
+      'If these changes are intentional, leave a comment with `--update-snapshots` to commit new reference snapshots\n',
       ...mdLines
     ].join('\n')
-    const octokit = github.getOctokit(token)
-    if (mdLines.length) {
-      await octokit.rest.issues.createComment({
-        issue_number: github?.context?.payload?.pull_request?.number || 0,
-        repo: github.context.repo.repo,
-        owner: github.context.repo.owner,
-        body: commentBody
-      })
-    }
+    // important note: This action does not handle the `--update-snapshots` comment
+
+    core.setOutput('body', commentBody)
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
