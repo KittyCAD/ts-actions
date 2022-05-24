@@ -47,7 +47,6 @@ jobs:
       - name: Commit changes in dist, if any
         if: steps.git-check.outputs.modified == 'true'
         run: |
-            git add dist/.
             git config --local user.email "github-actions[bot]@users.noreply.github.com"
             git config --local user.name "github-actions[bot]"
             git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
