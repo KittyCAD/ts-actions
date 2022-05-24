@@ -1,0 +1,25 @@
+name: "Get deployment target url test"
+
+on:
+    pull_request:
+
+jobs:
+  get-deployment-target-url-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./get-deployment-target-url/
+        id: get-preview-url
+        with:
+          github-token: ${{ secrets.GLOBAL_PAT }}
+          # random PR for testing in this repo https://github.com/KittyCAD/docs/pull/233
+          sha: 9a84363538d718843698b3966af4be1fe3e14159
+          repo: docs
+      - name: setup gh cli
+        run: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+      - name: comment diff
+        env:
+            PRNUM: ${{ github.event.pull_request.number }}
+            BODY: "found a url: ${{ steps.get-preview-url.outputs.targeturl }}"
+        run: gh pr comment $PRNUM --body "$BODY"

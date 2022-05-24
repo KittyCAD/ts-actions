@@ -9,7 +9,7 @@
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint src/**/*.ts",
-    "package": "ncc build lib/add-issues-to-project.js --source-map --license licenses.txt -o dist/add-issues-to-project && ncc build lib/show-visual-diffs-in-comment.js --source-map --license licenses.txt -o dist/show-visual-diffs-in-comment",
+    "package": "ncc build lib/add-issues-to-project.js --source-map --license licenses.txt -o dist/add-issues-to-project && ncc build lib/show-visual-diffs-in-comment.js --source-map --license licenses.txt -o dist/show-visual-diffs-in-comment && ncc build lib/get-deployment-target-url.js --source-map --license licenses.txt -o dist/get-deployment-target-url",
     "test": "jest",
     "all": "npm run build && npm run format && npm run lint && npm run package && npm test"
   },
