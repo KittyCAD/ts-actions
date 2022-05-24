@@ -41,6 +41,8 @@ jobs:
       - name: Check for modified files
         id: git-check
         run: echo ::set-output name=modified::$(if git diff-index --ignore-submodules --quiet HEAD --; then echo "false"; else echo "true"; fi)
+      - name: diff debug
+        run: git diff-index --ignore-submodules HEAD
       - name: git status
         id: git-status
         run: git status
