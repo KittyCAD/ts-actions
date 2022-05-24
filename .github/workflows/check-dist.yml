@@ -40,9 +40,9 @@ jobs:
 
       - name: Check for modified files
         id: git-check
-        run: echo ::set-output name=modified::$(if git diff-index --ignore-submodules --quiet HEAD --; then echo "false"; else echo "true"; fi)
+        run: echo ::set-output name=modified::$(if git diff-index --ignore-submodules --quiet ${{ github.event.pull_request.head.sha }} --; then echo "false"; else echo "true"; fi)
       - name: diff debug
-        run: git diff-index --ignore-submodules HEAD
+        run: git diff-index --ignore-submodules ${{ github.event.pull_request.head.sha }}
       - name: git status
         id: git-status
         run: git status
