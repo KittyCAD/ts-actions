@@ -7,6 +7,7 @@ async function run(): Promise<void> {
   const repo = core.getInput('repo') || github.context.repo.repo
   const token = core.getInput('github-token')
   const gitSha = core.getInput('sha')
+  // test vars for running locally, will need to `export GITHUB_TOKEN=****` first
   //   const owner = 'KittyCAD'
   //   const repo = 'docs'
   //   const token = process.env.GITHUB_TOKEN
