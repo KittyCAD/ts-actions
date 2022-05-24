@@ -37,7 +37,8 @@ jobs:
         run: |
           npm run build
           npm run package
-
+      - name: pull
+        run: git pull
       - name: Check for modified files
         id: git-check
         run: echo ::set-output name=modified::$(if git diff-index --ignore-submodules --quiet ${{ github.event.pull_request.head.sha }} --; then echo "false"; else echo "true"; fi)
