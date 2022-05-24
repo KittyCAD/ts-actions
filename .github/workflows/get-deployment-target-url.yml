@@ -12,7 +12,8 @@ jobs:
         id: get-preview-url
         with:
           # github-token: ${{ github.token }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GLOBAL_PAT }}
+          # github-token: ${{ secrets.GITHUB_TOKEN }}
           # random PR for testing in this repo https://github.com/KittyCAD/docs/pull/233
           sha: 9a84363538d718843698b3966af4be1fe3e14159
           repo: docs
