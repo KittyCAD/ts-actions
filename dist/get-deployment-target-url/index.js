@@ -37,6 +37,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
+const util_1 = __nccwpck_require__(1669);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         const owner = github.context.repo.owner;
@@ -47,19 +48,27 @@ function run() {
         //   const repo = 'docs'
         //   const token = process.env.GITHUB_TOKEN
         //   const gitSha = '9a84363538d718843698b3966af4be1fe3e14159'
-        const octokit = github.getOctokit(token);
-        const { data: [deployment] } = yield octokit.rest.repos.listDeployments({
-            owner,
-            repo,
-            sha: gitSha
-        });
-        const id = deployment.id;
-        const { data: [deploymentStatuses] } = yield octokit.rest.repos.listDeploymentStatuses({
-            owner,
-            repo,
-            deployment_id: id
-        });
-        core.setOutput('targeturl', deploymentStatuses.target_url);
+        try {
+            const octokit = github.getOctokit(token);
+            const { data: [deployment] } = yield octokit.rest.repos.listDeployments({
+                owner,
+                repo,
+                sha: gitSha
+            });
+            core.debug(`deployment: ${(0, util_1.inspect)(deployment)}`);
+            const id = deployment.id;
+            const { data: [deploymentStatuses] } = yield octokit.rest.repos.listDeploymentStatuses({
+                owner,
+                repo,
+                deployment_id: id
+            });
+            core.debug(`deploymentStatuses: ${(0, util_1.inspect)(deploymentStatuses)}`);
+            core.setOutput('targeturl', deploymentStatuses.target_url);
+        }
+        catch (e) {
+            core.debug(`error: ${(0, util_1.inspect)(e)}`);
+            throw e;
+        }
     });
 }
 run();
