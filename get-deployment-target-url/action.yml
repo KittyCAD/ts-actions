@@ -1,0 +1,19 @@
+name: 'Get deployment target url'
+description: Grabs the target url for a given sha, grabs the first one if there's more then 1
+author: 'KittyCAD'
+inputs:
+  github-token:
+    required: true
+    description: github token
+  sha:
+    required: true
+    description: git sha of the deployment
+  repo:
+    required: false
+    description: git repo name. If not supplied, github context is used
+outputs:
+  targeturl:
+    description: deployment target url, vercel preview in our case
+runs:
+  using: 'node16'
+  main: '../dist/get-deployment-target-url/index.js'
