@@ -37,13 +37,11 @@ jobs:
         run: |
           npm run build
           npm run package
-      - name: pull
-        run: git pull
       - name: Check for modified files
         id: git-check
-        run: echo ::set-output name=modified::$(if git diff-index --ignore-submodules --quiet ${{ github.event.pull_request.head.sha }} --; then echo "false"; else echo "true"; fi)
-      - name: diff debug
-        run: git diff-index --ignore-submodules ${{ github.event.pull_request.head.sha }}
+        run: echo ::set-output name=modified::$(if git diff-index --ignore-submodules --quiet HEAD --; then echo "false"; else echo "true"; fi)
+      - name: diff debug # TODO figure out why this returning files, when git status says there's nothing in the working tree
+        run: git diff-index --ignore-submodules HEAD
       - name: git status
         id: git-status
         run: git status
