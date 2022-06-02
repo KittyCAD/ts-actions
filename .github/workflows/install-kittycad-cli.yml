@@ -15,4 +15,13 @@ jobs:
         run: |
             echo "Version from output is: ${{ steps.install-kittycad.outputs.version }}"
             kittycad --version
+  
+  test-install-cli-win:
+    runs-on: windows-latest
+    steps:
+      - run: echo "testing 123"
+        shell: bash
+      - uses: actions/checkout@v3
+      - uses: ./install-kittycad/
+        id: install-kittycad
 
