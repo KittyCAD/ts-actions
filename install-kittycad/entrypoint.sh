@@ -10,4 +10,4 @@ curl -fSL "https://dl.kittycad.io/releases/cli/v0.0.9/cli-linux-amd64" -o "/usr/
 echo "kittycad cli installed!"
 
 # Run it!
-# kittycad -h || true
+kittycad -h
