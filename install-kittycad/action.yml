@@ -15,7 +15,7 @@ runs:
       shell: bash
     - id: install-kittycad-cli-win
       if: runner.os == 'Windows'
-      run: ${{ github.action_path }}/entrypoint-win.sh
+      run: ${{ github.action_path }}\entrypoint-win.sh
       shell: bash
     - id: set-output
       run: echo "::set-output name=version::$(kittycad --version)"

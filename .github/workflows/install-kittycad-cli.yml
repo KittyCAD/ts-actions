@@ -22,7 +22,7 @@ jobs:
       - run: echo "testing 123"
         shell: bash
       - uses: actions/checkout@v3
-      - uses: ./install-kittycad/
+      - uses: install-kittycad
         id: install-kittycad
       - name: check-install
         run: |
