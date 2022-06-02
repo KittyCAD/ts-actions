@@ -24,4 +24,8 @@ jobs:
       - uses: actions/checkout@v3
       - uses: ./install-kittycad/
         id: install-kittycad
+      - name: check-install
+        run: |
+            echo "Version from output is: ${{ steps.install-kittycad.outputs.version }}"
+            kittycad --version
 

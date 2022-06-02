@@ -1,15 +1,19 @@
-name: "install-kittycad-cli-action"
-description: "Install KittyCAD CLI on a Linux host"
+name: 'install-kittycad-cli-action'
+description: 'Install KittyCAD CLI on a Linux host'
 
 outputs:
   version:
-    description: "The KittyCAD CLI version that was installed"
+    description: 'The KittyCAD CLI version that was installed'
     value: ${{ steps.set-output.outputs.version }}
 
 runs:
-  using: "composite"
+  using: 'composite'
   steps:
+    - name: show runner
+      run: echo "${{github.runner}}"
+      shell: bash
     - id: install-kittycad-cli
+      # if: ${{ github.runner }} == ""
       run: sudo --preserve-env ${{ github.action_path }}/entrypoint.sh
       shell: bash
     - id: set-output
