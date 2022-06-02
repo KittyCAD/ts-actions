@@ -10,7 +10,7 @@ runs:
   using: 'composite'
   steps:
     - name: show runner
-      run: echo "${{github.runner}}"
+      run: echo "${{runner.os}}"
       shell: bash
     - id: install-kittycad-cli
       # if: ${{ github.runner }} == ""
