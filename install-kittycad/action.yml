@@ -9,12 +9,13 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: show runner
-      run: echo "${{runner.os}}"
-      shell: bash
     - id: install-kittycad-cli
-      # if: ${{ github.runner }} == ""
+      if: ${{ runner.os }} == "Linux"
       run: sudo --preserve-env ${{ github.action_path }}/entrypoint.sh
+      shell: bash
+    - id: install-kittycad-cli-win
+      if: ${{ runner.os }} == "Windows"
+      run: sudo --preserve-env ${{ github.action_path }}/entrypoint-win.sh
       shell: bash
     - id: set-output
       run: echo "::set-output name=version::$(kittycad --version)"
