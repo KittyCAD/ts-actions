@@ -1,30 +1,50 @@
-<p align="center">
-  <a href="https://github.com/actions/typescript-action/actions"><img alt="typescript-action status" src="https://github.com/actions/typescript-action/workflows/build-test/badge.svg"></a>
-</p>
+## Actions
 
-# Add issues to the "All Tasks" project
+This repo contains a collections of actions, some are our internal actions, others are useful actions that leverage the KittyCAD cli.
 
-This action will automatically add issues to our "All Tasks" project
+### Install KittyCAD CLI
 
-It uses typescript, but since actions need to be javascript the build files are committed as well in `dist` and `lib`. We're using Vercel's `ncc` to bundle dependancies along with the build code.
-
-Because this interacts with the Github api, and our Github resources, the development story is little rough. Talk to Kurt for tips
-
-This repo is public as is a requirement for Actions.
-
-## Dev
-
-Install the dependencies  
-```bash
-$ npm install
+If you want to use the KittyCAD cli directly in your actions, for example:
+```yml
+name: "install KittyCAD cli"
+on:
+  pull_request:
+jobs:
+  my-job:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: KittyCAD/ts-actions/install-kittycad@v0.2.2
+      - name: use KittyCAD cli
+        run: kittycad --version # do things with cli
+        env: 
+          KITTYCAD_API_TOKEN: ${{ secrets.KITTYCAD_API_TOKEN }}
 ```
 
-Build the typescript and package it for distribution
-```bash
-$ npm run build && npm run package
+### convert all files in a directory
+
+This action will convert all 3D files in a directory to your desired format.
+
+```yml
+name: "test converting files"
+on:
+    pull_request:
+jobs:
+  test-convert-directory-action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: KittyCAD/ts-actions/convert-dir@v0.2.2
+        with:
+          kittycad-token: ${{ secrets.KITTYCAD_API_TOKEN }}
+          input-directory: original-files-path
+          output-directory: converted-files-path
+          conversion-type: fbx
+      - name: Check files converted
+        run: ls converted-files-path # prints converted file names
 ```
 
-before you push make sure you also commit the generated changes in `dist` and `lib`
+## Other actions
 
-You will need to make a release to reference the action in other repo workflows.
+For our other internal use actions see CONTRIBUTING.md
 
