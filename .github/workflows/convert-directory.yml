@@ -31,3 +31,4 @@ jobs:
               return 0
             }
             all_exist test-files-out/test-obj.fbx test-files-out/test-stl.fbx && echo "$0: all files exist" >&2
+        shell: bash
