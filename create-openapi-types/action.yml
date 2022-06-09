@@ -1,0 +1,21 @@
+name: 'Create openapi types'
+description: Grabs the spec from one of our repos and writes a typescript file
+author: 'KittyCAD'
+inputs:
+  github-token:
+    required: true
+    description: github token
+  spec-path:
+    required: true
+    description: git sha of the deployment
+  def-path:
+    required: true
+    description: path of ouput definition
+  repo:
+    required: false
+    description: git repo name. If not supplied, github context is used
+
+ 
+runs:
+  main: '../dist/create-openapi-types/index.js'
+  using: 'node16'

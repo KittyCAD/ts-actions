@@ -1,50 +1,33 @@
-## Actions
+## Typescript Actions
 
-This repo contains a collections of actions, some are our internal actions, others are useful actions that leverage the KittyCAD cli.
+`add-issues-to-project`, `get-deployment-target-url` and `show-visual-diffs-in-comment` an all typescript actions we use internally in other repos
 
-### Install KittyCAD CLI
+Since actions need to be javascript the build files are committed as well in `dist` and `lib`. We're using Vercel's `ncc` to bundle dependancies along with the build code.
 
-If you want to use the KittyCAD cli directly in your actions, for example:
-```yml
-name: "install KittyCAD cli"
-on:
-  pull_request:
-jobs:
-  my-job:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: KittyCAD/ts-actions/install-kittycad@v0.2.2
-      - name: use KittyCAD cli
-        run: kittycad --version # do things with cli
-        env: 
-          KITTYCAD_API_TOKEN: ${{ secrets.KITTYCAD_API_TOKEN }}
+Because this interacts with the Github api, and our Github resources, the development story is little rough. Talk to Kurt for tips
+
+This repo is public as is a requirement for Actions.
+
+## Dev
+
+Install the dependencies  
+```bash
+$ npm install
 ```
 
-### convert all files in a directory
-
-This action will convert all 3D files in a directory to your desired format.
-
-```yml
-name: "test converting files"
-on:
-    pull_request:
-jobs:
-  test-convert-directory-action:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: KittyCAD/ts-actions/convert-dir@v0.2.2
-        with:
-          kittycad-token: ${{ secrets.KITTYCAD_API_TOKEN }}
-          input-directory: original-files-path
-          output-directory: converted-files-path
-          conversion-type: fbx
-      - name: Check files converted
-        run: ls converted-files-path # prints converted file names
+Build the typescript and package it for distribution
+```bash
+$ npm run build && npm run package
 ```
 
-## Other actions
+before you push make sure you also commit the generated changes in `dist` and `lib`
 
-For our other internal use actions see CONTRIBUTING.md
+You will need to make a tag and release to reference the action in other repo workflows.
 
+
+```bash
+export GITHUB_TOKEN=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
+
+$(npm bin)/dtsgen --out types.d.ts ./api.json
+
+```

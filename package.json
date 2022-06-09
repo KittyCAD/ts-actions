@@ -9,9 +9,11 @@
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint src/**/*.ts",
-    "package": "ncc build lib/add-issues-to-project.js --source-map --license licenses.txt -o dist/add-issues-to-project && ncc build lib/show-visual-diffs-in-comment.js --source-map --license licenses.txt -o dist/show-visual-diffs-in-comment && ncc build lib/get-deployment-target-url.js --source-map --license licenses.txt -o dist/get-deployment-target-url",
+    "package": "ncc build lib/add-issues-to-project.js --source-map --license licenses.txt -o dist/add-issues-to-project && ncc build lib/show-visual-diffs-in-comment.js --source-map --license licenses.txt -o dist/show-visual-diffs-in-comment && ncc build lib/get-deployment-target-url.js --source-map --license licenses.txt -o dist/get-deployment-target-url && yarn cleanup && yarn package:create-openapi-types",
+    "package:create-openapi-types": "rm -rf dist/create-openapi-types/ && ncc build lib/create-openapi-types.js --source-map --license licenses.txt -o dist/create-openapi-types",
     "test": "jest",
-    "all": "npm run build && npm run format && npm run lint && npm run package && npm test"
+    "all": "npm run build && npm run format && npm run lint && npm run package && npm test",
+    "cleanup": "rm -rf dist/create-openapi-types/"
   },
   "repository": {
     "type": "git",
@@ -29,7 +31,8 @@
     "@actions/github": "^5.0.1",
     "@google-cloud/storage": "^5.20.5",
     "filestack-js": "^3.25.0",
-    "globby": "^13.1.1"
+    "globby": "^13.1.1",
+    "openapi-typescript": "^5.4.0"
   },
   "devDependencies": {
     "@types/node": "^16.10.5",

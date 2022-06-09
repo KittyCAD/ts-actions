@@ -1,0 +1,18 @@
+name: "create openapi types"
+
+on:
+    pull_request:
+
+jobs:
+  get-deployment-target-url-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./create-openapi-types/
+        with:
+          github-token: ${{ secrets.GLOBAL_PAT }}
+          repo: api-deux
+          spec-path: openapi/api.json
+          def-path: spec.ts
+      - name: check spec.ts exists
+        run: ls -lah
