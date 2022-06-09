@@ -7,7 +7,7 @@ jobs:
   createCard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./add-issues-to-project/
         with:
           token: ${{ secrets.GLOBAL_PAT }}
