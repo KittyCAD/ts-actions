@@ -15,4 +15,4 @@ jobs:
           spec-path: openapi/api.json
           def-path: spec.ts
       - name: check spec.ts exists
-        run: ls
+        run: ls -lah
