@@ -326,7 +326,7 @@ async function main() {
         CLOSED: 0
     };
     Object.entries(PRGroupedByAuthor).forEach(([login, details]) => {
-        markdownOutput += `\n\n### ${loginToName(login)}`;
+        markdownOutput += `\n\n## ${loginToName(login)}`;
         if (details.PRs.length || details.PRComments.length) {
             markdownOutput += `\n\n#### PR activity`;
         }
