@@ -41,7 +41,7 @@ async function main() {
       }
       `
   )
-  const PRGroupedByAuthor: {
+  interface PRGroupedByAuthor {
     [login: string]: {
       PRs: {
         repo: string
@@ -56,7 +56,8 @@ async function main() {
       issuesClosed: any[]
       issuesComments: any[]
     }
-  } = {}
+  }
+  const prGroupedByAuthor: PRGroupedByAuthor = {}
   const PRsToGetCommentsFor: {repo: string; PRNum: number}[] = []
   Object.values(prsResponse).forEach(repo => {
     repo.pullRequests.nodes.forEach(
@@ -64,8 +65,8 @@ async function main() {
         const login = author.login
         if (login === 'dependabot') return
         if (cutOffDate.valueOf() > new Date(updatedAt).valueOf()) return
-        if (!PRGroupedByAuthor[login]) {
-          PRGroupedByAuthor[login] = {
+        if (!prGroupedByAuthor[login]) {
+          prGroupedByAuthor[login] = {
             PRs: [],
             PRComments: [],
             issuesOpened: [],
@@ -73,7 +74,7 @@ async function main() {
             issuesComments: []
           }
         }
-        PRGroupedByAuthor[login].PRs.push({
+        prGroupedByAuthor[login].PRs.push({
           repo: repository.name,
           number,
           author: author.login,
@@ -154,8 +155,8 @@ async function main() {
   })
 
   Object.values(commentGrouping).forEach(comment => {
-    if (!PRGroupedByAuthor[comment.author]) {
-      PRGroupedByAuthor[comment.author] = {
+    if (!prGroupedByAuthor[comment.author]) {
+      prGroupedByAuthor[comment.author] = {
         PRs: [],
         PRComments: [],
         issuesOpened: [],
@@ -163,7 +164,7 @@ async function main() {
         issuesComments: []
       }
     }
-    PRGroupedByAuthor[comment.author].PRComments.push(comment)
+    prGroupedByAuthor[comment.author].PRComments.push(comment)
   })
 
   const issuesResponse: {
@@ -339,8 +340,8 @@ async function main() {
       state: issue.state,
       title: issue.title
     }
-    if (!PRGroupedByAuthor[issue.creditTo]) {
-      PRGroupedByAuthor[issue.creditTo] = {
+    if (!prGroupedByAuthor[issue.creditTo]) {
+      prGroupedByAuthor[issue.creditTo] = {
         PRs: [],
         PRComments: [],
         issuesOpened: [],
@@ -349,11 +350,11 @@ async function main() {
       }
     }
     if (issue.action === 'commented') {
-      PRGroupedByAuthor[issue.creditTo].issuesComments.push(issueInfo)
+      prGroupedByAuthor[issue.creditTo].issuesComments.push(issueInfo)
     } else if (issue.action === 'closed') {
-      PRGroupedByAuthor[issue.creditTo].issuesClosed.push(issueInfo)
+      prGroupedByAuthor[issue.creditTo].issuesClosed.push(issueInfo)
     } else if (issue.action === 'created') {
-      PRGroupedByAuthor[issue.creditTo].issuesOpened.push(issueInfo)
+      prGroupedByAuthor[issue.creditTo].issuesOpened.push(issueInfo)
     }
   })
 
@@ -365,10 +366,13 @@ async function main() {
     OPEN: 1,
     CLOSED: 0
   }
-  Object.entries(PRGroupedByAuthor).forEach(([login, details]) => {
+  const processAuthorGroups = ([login, details]: [
+    string,
+    PRGroupedByAuthor[string]
+  ]) => {
     markdownOutput += `\n\n## ${loginToName(login)}`
     markdownOutput += `\n\n#### Human Summary`
-    markdownOutput += `\n- _Add you're summary here_`
+    markdownOutput += `\n- _Add your summary here_`
     if (details.PRs.length || details.PRComments.length) {
       markdownOutput += `\n\n#### PR activity`
     }
@@ -404,8 +408,23 @@ async function main() {
     details.issuesComments.forEach(issue => {
       markdownOutput += `\n- 📝 Comment . [${issue.repo} / ${issue.title}](${issue.url})`
     })
-  })
-  core.debug(`PRGroupedByAuthor: ${inspect(PRGroupedByAuthor)}`)
+  }
+  const orderedContributors = Object.entries(prGroupedByAuthor).sort(
+    ([loginA], [loginB]) => (loginA > loginB ? 1 : -1)
+  )
+  const devs = ['brwhale', 'iterion', 'Irev-Dev', 'hanbollar', 'jessfraz']
+  const devContributors = orderedContributors.filter(([login]) =>
+    devs.includes(login)
+  )
+  const nonDevContributors = orderedContributors.filter(
+    ([login]) => !devs.includes(login)
+  )
+
+  devContributors.forEach(processAuthorGroups)
+  markdownOutput += `\n\n<br/>\n -- **Non-Dev Contributors** --`
+  nonDevContributors.forEach(processAuthorGroups)
+
+  core.debug(`PRGroupedByAuthor: ${inspect(prGroupedByAuthor)}`)
   core.setOutput('markdown', markdownOutput)
 }
 
@@ -413,13 +432,13 @@ main()
 
 function loginToName(login: string) {
   const loginToNameMap: {[key: string]: string} = {
-    brwhale: 'Garrett',
-    iterion: 'Adam',
-    jessfraz: 'Jess',
     'Irev-Dev': 'Kurt',
+    brwhale: 'Garrett',
     hanbollar: 'Hannah',
-    JordanNoone: 'Jordan',
+    iterion: 'Adam',
     JBEmbedded: 'JB',
+    jessfraz: 'Jess',
+    JordanNoone: 'Jordan',
     mansoorsiddiqui: 'Mansoor'
   }
   return loginToNameMap[login] || login
