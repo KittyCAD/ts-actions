@@ -410,7 +410,7 @@ async function main() {
     })
   }
   const orderedContributors = Object.entries(prGroupedByAuthor).sort(
-    ([loginA], [loginB]) => (loginA > loginB ? 1 : -1)
+    ([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1)
   )
   const devs = ['brwhale', 'iterion', 'Irev-Dev', 'hanbollar', 'jessfraz']
   const devContributors = orderedContributors.filter(([login]) =>
@@ -421,7 +421,7 @@ async function main() {
   )
 
   devContributors.forEach(processAuthorGroups)
-  markdownOutput += `\n\n<br/>\n -- **Non-Dev Contributors** --`
+  markdownOutput += `\n\n<br/>\n\n -- **Other Contributors** --`
   nonDevContributors.forEach(processAuthorGroups)
 
   core.debug(`PRGroupedByAuthor: ${inspect(prGroupedByAuthor)}`)

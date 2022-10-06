@@ -249,12 +249,12 @@ async function main() {
             markdownOutput += `\n- 📝 Comment . [${issue.repo} / ${issue.title}](${issue.url})`;
         });
     };
-    const orderedContributors = Object.entries(prGroupedByAuthor).sort(([loginA], [loginB]) => loginA > loginB ? 1 : -1);
+    const orderedContributors = Object.entries(prGroupedByAuthor).sort(([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1));
     const devs = ['brwhale', 'iterion', 'Irev-Dev', 'hanbollar', 'jessfraz'];
     const devContributors = orderedContributors.filter(([login]) => devs.includes(login));
     const nonDevContributors = orderedContributors.filter(([login]) => !devs.includes(login));
     devContributors.forEach(processAuthorGroups);
-    markdownOutput += `\n\n<br/>\n -- **Non-Dev Contributors** --`;
+    markdownOutput += `\n\n<br/>\n\n -- **Other Contributors** --`;
     nonDevContributors.forEach(processAuthorGroups);
     core.debug(`PRGroupedByAuthor: ${(0, util_1.inspect)(prGroupedByAuthor)}`);
     core.setOutput('markdown', markdownOutput);
