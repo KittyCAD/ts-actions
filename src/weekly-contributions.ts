@@ -2,6 +2,9 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {inspect} from 'util'
 
+type IssueStates = 'OPEN' | 'CLOSED'
+type PRStates = IssueStates | 'MERGED'
+
 async function main() {
   const token = core.getInput('github-token')
   const dateStr = core.getInput('date')
@@ -11,122 +14,8 @@ async function main() {
 
   const cutOffDate = new Date(date)
   cutOffDate.setDate(cutOffDate.getDate() - 7)
-  const makeInnerPRQuery = (repoName: string) => {
-    return `
-    ${repoName
-      .replaceAll('.', '')
-      .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
-        pullRequests(first: 50, orderBy: {direction: DESC, field: UPDATED_AT}) {
-          nodes {
-            repository {
-              name
-              id
-            }
-            number
-            url
-            title
-            id
-            updatedAt
-            state
-            author {
-              login
-            }
-          }
-        }
-    }
-    `
-  }
-  const makeInnerPRCommentQuery = (repoName: string, PrNumber: number) => {
-    return `
-    ${repoName
-      .replaceAll('.', '')
-      .replaceAll(
-        '-',
-        ''
-      )}${PrNumber}: repository(name: "${repoName}" owner: "kittycad") {
-		pullRequest(number: ${PrNumber}) {
-          repository {
-            name
-          }
-          number
-          title
-          author {
-            login
-          }
-          comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
-            nodes {
-              url
-              author {
-                login
-              }
-            }
-          }
-        }
-    }
-    `
-  }
-  const makeInnerIssueQuery = (repoName: string) => {
-    return `
-    ${repoName
-      .replaceAll('.', '')
-      .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
-        issues(first: 50 orderBy: {direction: DESC, field: UPDATED_AT}) {
-          nodes {
-            number
-            title
-            url
-            author {
-              login
-            }
-            createdAt
-            updatedAt
-            assignees(first: 5) {
-              nodes {
-                login
-              }
-            }
-            state
-            closedAt
-            repository {
-                name
-            }
-          }
-        }
-    }
-    `
-  }
-  const makeInnerIssueCommentQuery = (repoName: string, number: number) => {
-    return `
-    ${repoName
-      .replaceAll('.', '')
-      .replaceAll(
-        '-',
-        ''
-      )}${number}: repository(name: "${repoName}" owner: "kittycad") {
-        issue(number: ${number}) {
-          title
-          number
-          repository {
-            name
-          }
-          state
-          url
-          comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
-            nodes {
-              updatedAt
-              author {
-                login
-              }
-            }
-          }
-        }
-    }
-    `
-  }
-  const innerQueries = getReposNames()
-    .map(repoName => makeInnerPRQuery(repoName))
-    .join('\n')
-  const projectsResponse: {
+
+  const prsResponse: {
     [repoName: string]: {
       pullRequests: {
         nodes: {
@@ -137,7 +26,7 @@ async function main() {
             name: string
             id: string
           }
-          state: 'OPEN' | 'CLOSED' | 'MERGED'
+          state: PRStates
           number: number
           title: string
           url: string
@@ -148,7 +37,7 @@ async function main() {
   } = await octokit.graphql(
     `
       query{
-        ${innerQueries}
+        ${getReposNames().map(makeInnerPRQuery).join('\n')}
       }
       `
   )
@@ -159,7 +48,7 @@ async function main() {
         number: number
         author: string
         url: string
-        state: 'OPEN' | 'CLOSED' | 'MERGED'
+        state: PRStates
         title: string
       }[]
       PRComments: any[]
@@ -169,7 +58,7 @@ async function main() {
     }
   } = {}
   const PRsToGetCommentsFor: {repo: string; PRNum: number}[] = []
-  Object.values(projectsResponse).forEach(repo => {
+  Object.values(prsResponse).forEach(repo => {
     repo.pullRequests.nodes.forEach(
       ({author, repository, state, url, title, updatedAt, number}) => {
         const login = author.login
@@ -294,7 +183,7 @@ async function main() {
               login: string
             }[]
           }
-          state: 'OPEN' | 'CLOSED'
+          state: IssueStates
           closedAt: string
           repository: {
             name: string
@@ -315,7 +204,7 @@ async function main() {
       number: number
       url: string
       title: string
-      state: 'OPEN' | 'CLOSED'
+      state: IssueStates
       creditTo: string
       action: 'created' | 'commented' | 'closed'
     }
@@ -396,7 +285,7 @@ async function main() {
         number: number
         url: string
         title: string
-        state: 'OPEN' | 'CLOSED'
+        state: IssueStates
         comments: {
           nodes: {
             updatedAt: string
@@ -470,7 +359,7 @@ async function main() {
 
   let markdownOutput = ''
   const rating: {
-    [bing in 'MERGED' | 'OPEN' | 'CLOSED']: number
+    [key in PRStates]: number
   } = {
     MERGED: 2,
     OPEN: 1,
@@ -478,6 +367,8 @@ async function main() {
   }
   Object.entries(PRGroupedByAuthor).forEach(([login, details]) => {
     markdownOutput += `\n\n## ${loginToName(login)}`
+    markdownOutput += `\n\n## Human Summary}`
+    markdownOutput += `\n- <Add you summary here>}`
     if (details.PRs.length || details.PRComments.length) {
       markdownOutput += `\n\n#### PR activity`
     }
@@ -576,4 +467,117 @@ function getReposNames() {
     'ts-actions',
     'website'
   ]
+}
+
+function makeInnerPRQuery(repoName: string) {
+  return `
+  ${repoName
+    .replaceAll('.', '')
+    .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
+      pullRequests(first: 50, orderBy: {direction: DESC, field: UPDATED_AT}) {
+        nodes {
+          repository {
+            name
+            id
+          }
+          number
+          url
+          title
+          id
+          updatedAt
+          state
+          author {
+            login
+          }
+        }
+      }
+  }
+  `
+}
+function makeInnerPRCommentQuery(repoName: string, PrNumber: number) {
+  return `
+  ${repoName
+    .replaceAll('.', '')
+    .replaceAll(
+      '-',
+      ''
+    )}${PrNumber}: repository(name: "${repoName}" owner: "kittycad") {
+  pullRequest(number: ${PrNumber}) {
+        repository {
+          name
+        }
+        number
+        title
+        author {
+          login
+        }
+        comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
+          nodes {
+            url
+            author {
+              login
+            }
+          }
+        }
+      }
+  }
+  `
+}
+function makeInnerIssueQuery(repoName: string) {
+  return `
+  ${repoName
+    .replaceAll('.', '')
+    .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
+      issues(first: 50 orderBy: {direction: DESC, field: UPDATED_AT}) {
+        nodes {
+          number
+          title
+          url
+          author {
+            login
+          }
+          createdAt
+          updatedAt
+          assignees(first: 5) {
+            nodes {
+              login
+            }
+          }
+          state
+          closedAt
+          repository {
+              name
+          }
+        }
+      }
+  }
+  `
+}
+function makeInnerIssueCommentQuery(repoName: string, number: number) {
+  return `
+  ${repoName
+    .replaceAll('.', '')
+    .replaceAll(
+      '-',
+      ''
+    )}${number}: repository(name: "${repoName}" owner: "kittycad") {
+      issue(number: ${number}) {
+        title
+        number
+        repository {
+          name
+        }
+        state
+        url
+        comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
+          nodes {
+            updatedAt
+            author {
+              login
+            }
+          }
+        }
+      }
+  }
+  `
 }

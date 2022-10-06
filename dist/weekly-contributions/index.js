@@ -36,123 +36,14 @@ async function main() {
     const date = dateStr ? new Date(dateStr) : new Date();
     const cutOffDate = new Date(date);
     cutOffDate.setDate(cutOffDate.getDate() - 7);
-    const makeInnerPRQuery = (repoName) => {
-        return `
-    ${repoName
-            .replaceAll('.', '')
-            .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
-        pullRequests(first: 50, orderBy: {direction: DESC, field: UPDATED_AT}) {
-          nodes {
-            repository {
-              name
-              id
-            }
-            number
-            url
-            title
-            id
-            updatedAt
-            state
-            author {
-              login
-            }
-          }
-        }
-    }
-    `;
-    };
-    const makeInnerPRCommentQuery = (repoName, PrNumber) => {
-        return `
-    ${repoName
-            .replaceAll('.', '')
-            .replaceAll('-', '')}${PrNumber}: repository(name: "${repoName}" owner: "kittycad") {
-		pullRequest(number: ${PrNumber}) {
-          repository {
-            name
-          }
-          number
-          title
-          author {
-            login
-          }
-          comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
-            nodes {
-              url
-              author {
-                login
-              }
-            }
-          }
-        }
-    }
-    `;
-    };
-    const makeInnerIssueQuery = (repoName) => {
-        return `
-    ${repoName
-            .replaceAll('.', '')
-            .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
-        issues(first: 50 orderBy: {direction: DESC, field: UPDATED_AT}) {
-          nodes {
-            number
-            title
-            url
-            author {
-              login
-            }
-            createdAt
-            updatedAt
-            assignees(first: 5) {
-              nodes {
-                login
-              }
-            }
-            state
-            closedAt
-            repository {
-                name
-            }
-          }
-        }
-    }
-    `;
-    };
-    const makeInnerIssueCommentQuery = (repoName, number) => {
-        return `
-    ${repoName
-            .replaceAll('.', '')
-            .replaceAll('-', '')}${number}: repository(name: "${repoName}" owner: "kittycad") {
-        issue(number: ${number}) {
-          title
-          number
-          repository {
-            name
-          }
-          state
-          url
-          comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
-            nodes {
-              updatedAt
-              author {
-                login
-              }
-            }
-          }
-        }
-    }
-    `;
-    };
-    const innerQueries = getReposNames()
-        .map(repoName => makeInnerPRQuery(repoName))
-        .join('\n');
-    const projectsResponse = await octokit.graphql(`
+    const prsResponse = await octokit.graphql(`
       query{
-        ${innerQueries}
+        ${getReposNames().map(makeInnerPRQuery).join('\n')}
       }
       `);
     const PRGroupedByAuthor = {};
     const PRsToGetCommentsFor = [];
-    Object.values(projectsResponse).forEach(repo => {
+    Object.values(prsResponse).forEach(repo => {
         repo.pullRequests.nodes.forEach(({ author, repository, state, url, title, updatedAt, number }) => {
             const login = author.login;
             if (login === 'dependabot')
@@ -327,6 +218,8 @@ async function main() {
     };
     Object.entries(PRGroupedByAuthor).forEach(([login, details]) => {
         markdownOutput += `\n\n## ${loginToName(login)}`;
+        markdownOutput += `\n\n## Human Summary}`;
+        markdownOutput += `\n- <Add you summary here>}`;
         if (details.PRs.length || details.PRComments.length) {
             markdownOutput += `\n\n#### PR activity`;
         }
@@ -415,6 +308,112 @@ function getReposNames() {
         'ts-actions',
         'website'
     ];
+}
+function makeInnerPRQuery(repoName) {
+    return `
+  ${repoName
+        .replaceAll('.', '')
+        .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
+      pullRequests(first: 50, orderBy: {direction: DESC, field: UPDATED_AT}) {
+        nodes {
+          repository {
+            name
+            id
+          }
+          number
+          url
+          title
+          id
+          updatedAt
+          state
+          author {
+            login
+          }
+        }
+      }
+  }
+  `;
+}
+function makeInnerPRCommentQuery(repoName, PrNumber) {
+    return `
+  ${repoName
+        .replaceAll('.', '')
+        .replaceAll('-', '')}${PrNumber}: repository(name: "${repoName}" owner: "kittycad") {
+  pullRequest(number: ${PrNumber}) {
+        repository {
+          name
+        }
+        number
+        title
+        author {
+          login
+        }
+        comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
+          nodes {
+            url
+            author {
+              login
+            }
+          }
+        }
+      }
+  }
+  `;
+}
+function makeInnerIssueQuery(repoName) {
+    return `
+  ${repoName
+        .replaceAll('.', '')
+        .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
+      issues(first: 50 orderBy: {direction: DESC, field: UPDATED_AT}) {
+        nodes {
+          number
+          title
+          url
+          author {
+            login
+          }
+          createdAt
+          updatedAt
+          assignees(first: 5) {
+            nodes {
+              login
+            }
+          }
+          state
+          closedAt
+          repository {
+              name
+          }
+        }
+      }
+  }
+  `;
+}
+function makeInnerIssueCommentQuery(repoName, number) {
+    return `
+  ${repoName
+        .replaceAll('.', '')
+        .replaceAll('-', '')}${number}: repository(name: "${repoName}" owner: "kittycad") {
+      issue(number: ${number}) {
+        title
+        number
+        repository {
+          name
+        }
+        state
+        url
+        comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
+          nodes {
+            updatedAt
+            author {
+              login
+            }
+          }
+        }
+      }
+  }
+  `;
 }
 
 
