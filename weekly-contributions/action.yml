@@ -1,0 +1,16 @@
+name: 'Generate weekly contributions into markdown summary'
+description: For a given list of repos collect the teams activity
+author: 'KittyCAD'
+inputs:
+  github-token:
+    required: true
+    description: github token
+  date:
+    required: false
+    description: date to collect activity up to, will get data of the week proceeding, if not provided it will assume now
+outputs:
+  markdown:
+    description: Output summary
+runs:
+  using: 'node16'
+  main: '../dist/weekly-contributions/index.js'

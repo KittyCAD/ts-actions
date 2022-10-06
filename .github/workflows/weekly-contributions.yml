@@ -1,0 +1,22 @@
+name: "get markdowns summary of weekly contributions"
+
+on:
+    pull_request:
+
+jobs:
+  weekly-contributions-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./weekly-contributions/
+        id: weekly-contributions
+        with:
+          github-token: ${{ secrets.GLOBAL_PAT }}
+      - name: setup gh cli
+        run: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+      - name: comment markdown
+        env:
+            PRNUM: ${{ github.event.pull_request.number }}
+            BODY: "${{ steps.weekly-contributions.outputs.markdown }}"
+        run: gh pr comment $PRNUM --body "$BODY"
