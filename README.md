@@ -26,7 +26,7 @@ You will need to make a tag and release to reference the action in other repo wo
 
 
 ```bash
-export GITHUB_TOKEN=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
+export GITHUB_TOKEN=ghp_your_token
 
 $(npm bin)/dtsgen --out types.d.ts ./api.json
 
