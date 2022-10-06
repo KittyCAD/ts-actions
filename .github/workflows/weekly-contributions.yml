@@ -18,5 +18,5 @@ jobs:
       - name: comment markdown
         env:
             PRNUM: ${{ github.event.pull_request.number }}
-            BODY: "${{ steps.get-preview-url.outputs.markdown }}"
+            BODY: "${{ steps.weekly-contributions.outputs.markdown }}"
         run: gh pr comment $PRNUM --body "$BODY"
