@@ -2,10 +2,10 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import fsp from 'node:fs/promises'
 import {inspect} from 'util'
-import openapiTS from "openapi-typescript";
+import openapiTS from 'openapi-typescript'
 
 async function run(): Promise<void> {
-// async function run() {
+  // async function run() {
   const repo = core.getInput('repo') || github.context.repo.repo
   const path = core.getInput('spec-path')
   const outputPath = core.getInput('def-path')
@@ -32,7 +32,7 @@ async function run(): Promise<void> {
     ).toString('utf8')
 
     const spec = JSON.parse(specRaw)
-    const output = await openapiTS(spec);
+    const output = await openapiTS(spec)
 
     await fsp.writeFile(outputPath, output)
   } catch (e) {
