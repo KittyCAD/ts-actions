@@ -1,7 +1,7 @@
-name: "get markdowns summary of weekly contributions"
+name: 'get markdowns summary of weekly contributions'
 
 on:
-    pull_request:
+  pull_request:
 
 jobs:
   weekly-contributions-test:
@@ -12,11 +12,20 @@ jobs:
         id: weekly-contributions
         with:
           github-token: ${{ secrets.GLOBAL_PAT }}
+          repos: |
+            [
+              "kittycad.go",
+              "kittycad.py",
+              "kittycad.rs",
+              "kittycad.ts",
+              "litterbox",
+              "website"
+            ]
       - name: setup gh cli
         run: |
-            echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
       - name: comment markdown
         env:
-            PRNUM: ${{ github.event.pull_request.number }}
-            BODY: "${{ steps.weekly-contributions.outputs.markdown }}"
+          PRNUM: ${{ github.event.pull_request.number }}
+          BODY: '${{ steps.weekly-contributions.outputs.markdown }}'
         run: gh pr comment $PRNUM --body "$BODY"

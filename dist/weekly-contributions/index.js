@@ -32,13 +32,14 @@ const util_1 = __nccwpck_require__(1669);
 async function main() {
     const token = core.getInput('github-token');
     const dateStr = core.getInput('date');
+    const repos = JSON.parse(core.getInput('repos'));
     const octokit = github.getOctokit(token);
     const date = dateStr ? new Date(dateStr) : new Date();
     const cutOffDate = new Date(date);
     cutOffDate.setDate(cutOffDate.getDate() - 7);
     const prsResponse = await octokit.graphql(`
       query{
-        ${getReposNames().map(makeInnerPRQuery).join('\n')}
+        ${repos.map(makeInnerPRQuery).join('\n')}
       }
       `);
     const prGroupedByAuthor = {};
@@ -109,7 +110,7 @@ async function main() {
     });
     const issuesResponse = await octokit.graphql(`
       query{
-        ${getReposNames().map(makeInnerIssueQuery).join('\n')}
+        ${repos.map(makeInnerIssueQuery).join('\n')}
       }
       `);
     const IssueTempObject = {};
@@ -269,52 +270,10 @@ function loginToName(login) {
         JBEmbedded: 'JB',
         jessfraz: 'Jess',
         JordanNoone: 'Jordan',
-        mansoorsiddiqui: 'Mansoor'
+        mansoorsiddiqui: 'Mansoor',
+        vonniwilliams: 'Vonni'
     };
     return loginToNameMap[login] || login;
-}
-function getReposNames() {
-    return [
-        '.github-private',
-        '.github',
-        'action-convert-directory',
-        'action-install-cli',
-        'api-deux',
-        'cio',
-        'cli',
-        'Clowder',
-        'community',
-        'configs',
-        'db',
-        'desktop',
-        'discord-bots',
-        'docs',
-        'documentation',
-        'Eng',
-        'engine-api',
-        'engine',
-        'executor',
-        'Furrture-Planning',
-        'graphs',
-        'hooks',
-        'infra',
-        'jordansPersonalLitterbox',
-        'kittycad.go',
-        'kittycad.py',
-        'kittycad.rs',
-        'kittycad.ts',
-        'litterbox',
-        'Media-Brand',
-        'mysql-watcher',
-        'OldKittyCADApp',
-        'payment-tools',
-        'PetStore',
-        'store',
-        'support',
-        'third-party-api-clients',
-        'ts-actions',
-        'website'
-    ];
 }
 function makeInnerPRQuery(repoName) {
     return `
