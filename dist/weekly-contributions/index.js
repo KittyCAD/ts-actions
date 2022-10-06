@@ -332,14 +332,14 @@ async function main() {
         }
         details.PRs.sort((a, b) => rating[b.state] - rating[a.state]).forEach(PR => {
             const prEmojiMap = {
-                MERGED: '💅 Merged ',
-                OPEN: '⏳ Open   ',
-                CLOSED: '🛑 Closed '
+                MERGED: '💅 Merged .....',
+                OPEN: '⏳ Open ........',
+                CLOSED: '🛑 Closed ......'
             };
             markdownOutput += `\n- ${prEmojiMap[PR.state]} [${PR.repo} / ${PR.title}](${PR.url})`;
         });
         details.PRComments.forEach(PR => {
-            markdownOutput += `\n- 📝 Comment [${PR.repo} / ${PR.title}](${PR.url})`;
+            markdownOutput += `\n- 📝 Comment . [${PR.repo} / ${PR.title}](${PR.url})`;
         });
         if (details.issuesClosed.length ||
             details.issuesOpened.length ||
@@ -347,13 +347,13 @@ async function main() {
             markdownOutput += `\n\n#### Issue activity`;
         }
         details.issuesClosed.forEach(issue => {
-            markdownOutput += `\n- 🛑 Closed  [${issue.repo} / ${issue.title}](${issue.url})`;
+            markdownOutput += `\n- ✅ Closed ...... [${issue.repo} / ${issue.title}](${issue.url})`;
         });
         details.issuesOpened.forEach(issue => {
-            markdownOutput += `\n- ⏳ Open    [${issue.repo} / ${issue.title}](${issue.url})`;
+            markdownOutput += `\n- ⏳ Open ........ [${issue.repo} / ${issue.title}](${issue.url})`;
         });
         details.issuesComments.forEach(issue => {
-            markdownOutput += `\n- 📝 Comment [${issue.repo} / ${issue.title}](${issue.url})`;
+            markdownOutput += `\n- 📝 Comment . [${issue.repo} / ${issue.title}](${issue.url})`;
         });
     });
     core.debug(`PRGroupedByAuthor: ${(0, util_1.inspect)(PRGroupedByAuthor)}`);
