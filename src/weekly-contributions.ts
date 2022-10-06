@@ -367,8 +367,8 @@ async function main() {
   }
   Object.entries(PRGroupedByAuthor).forEach(([login, details]) => {
     markdownOutput += `\n\n## ${loginToName(login)}`
-    markdownOutput += `\n\n## Human Summary}`
-    markdownOutput += `\n- <Add you summary here>}`
+    markdownOutput += `\n\n#### Human Summary`
+    markdownOutput += `\n- _Add you're summary here_`
     if (details.PRs.length || details.PRComments.length) {
       markdownOutput += `\n\n#### PR activity`
     }
