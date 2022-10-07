@@ -23,7 +23,7 @@ jobs:
         run: git status
       - name: stage dist if modified
         if: steps.git-check.outputs.modified == 'true'
-        run: git add dist/.
+        run: git add src/.
       - name: Commit changes in dist, if any
         if: steps.git-check.outputs.modified == 'true'
         run: |
