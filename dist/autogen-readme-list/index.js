@@ -91,7 +91,7 @@ async function reWriteMarkdown(token, path) {
     }
     core.debug(`tagsMap: ${(0, util_1.inspect)(tagsMap)}`);
     core.debug(`markdown: ${(0, util_1.inspect)(newMarkdown)}`);
-    promises_1.default.writeFile('./src/process-readme/demo-readme.md', newMarkdown);
+    promises_1.default.writeFile(path, newMarkdown);
 }
 function main() {
     const token = core.getInput('github-token');

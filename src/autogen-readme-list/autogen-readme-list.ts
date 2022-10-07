@@ -85,7 +85,7 @@ async function reWriteMarkdown(token: string, path: string) {
   core.debug(`tagsMap: ${inspect(tagsMap)}`)
   core.debug(`markdown: ${inspect(newMarkdown)}`)
 
-  fsp.writeFile('./src/process-readme/demo-readme.md', newMarkdown)
+  fsp.writeFile(path, newMarkdown)
 }
 
 function main() {
