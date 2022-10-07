@@ -9,6 +9,7 @@ async function main() {
   const token = core.getInput('github-token')
   const dateStr = core.getInput('date')
   const repos = JSON.parse(core.getInput('repos'))
+  const markdownPrefix = core.getInput('markdown-prefix') || ''
   const octokit = github.getOctokit(token)
 
   const date = dateStr ? new Date(dateStr) : new Date()
@@ -359,7 +360,7 @@ async function main() {
     }
   })
 
-  let markdownOutput = ''
+  let markdownOutput = markdownPrefix
   const rating: {
     [key in PRStates]: number
   } = {

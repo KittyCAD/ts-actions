@@ -12,6 +12,7 @@ jobs:
         id: weekly-contributions
         with:
           github-token: ${{ secrets.GLOBAL_PAT }}
+          markdown-prefix: "_test prefix_ `code 🤷`"
           repos: |
             [
               "kittycad.go",

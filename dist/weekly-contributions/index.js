@@ -33,6 +33,7 @@ async function main() {
     const token = core.getInput('github-token');
     const dateStr = core.getInput('date');
     const repos = JSON.parse(core.getInput('repos'));
+    const markdownPrefix = core.getInput('markdown-prefix') || '';
     const octokit = github.getOctokit(token);
     const date = dateStr ? new Date(dateStr) : new Date();
     const cutOffDate = new Date(date);
@@ -211,7 +212,7 @@ async function main() {
             prGroupedByAuthor[issue.creditTo].issuesOpened.push(issueInfo);
         }
     });
-    let markdownOutput = '';
+    let markdownOutput = markdownPrefix;
     const rating = {
         MERGED: 2,
         OPEN: 1,
