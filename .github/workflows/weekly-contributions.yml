@@ -13,15 +13,6 @@ jobs:
         with:
           github-token: ${{ secrets.GLOBAL_PAT }}
           markdown-prefix: "_test prefix_ `code 🤷`"
-          repos: |
-            [
-              "kittycad.go",
-              "kittycad.py",
-              "kittycad.rs",
-              "kittycad.ts",
-              "litterbox",
-              "website"
-            ]
       - name: setup gh cli
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token

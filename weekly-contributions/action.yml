@@ -8,9 +8,6 @@ inputs:
   date:
     required: false
     description: date to collect activity up to, will get data of the week proceeding, if not provided it will assume now
-  repos:
-    required: true
-    description: list of repos to check for activity in
   markdown-prefix:
     required: false
     description: Text added to the start of the markdown text
