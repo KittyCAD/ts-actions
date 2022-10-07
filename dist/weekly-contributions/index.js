@@ -32,135 +32,27 @@ const util_1 = __nccwpck_require__(1669);
 async function main() {
     const token = core.getInput('github-token');
     const dateStr = core.getInput('date');
+    const repos = JSON.parse(core.getInput('repos'));
     const octokit = github.getOctokit(token);
     const date = dateStr ? new Date(dateStr) : new Date();
     const cutOffDate = new Date(date);
     cutOffDate.setDate(cutOffDate.getDate() - 7);
-    const makeInnerPRQuery = (repoName) => {
-        return `
-    ${repoName
-            .replaceAll('.', '')
-            .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
-        pullRequests(first: 50, orderBy: {direction: DESC, field: UPDATED_AT}) {
-          nodes {
-            repository {
-              name
-              id
-            }
-            number
-            url
-            title
-            id
-            updatedAt
-            state
-            author {
-              login
-            }
-          }
-        }
-    }
-    `;
-    };
-    const makeInnerPRCommentQuery = (repoName, PrNumber) => {
-        return `
-    ${repoName
-            .replaceAll('.', '')
-            .replaceAll('-', '')}${PrNumber}: repository(name: "${repoName}" owner: "kittycad") {
-		pullRequest(number: ${PrNumber}) {
-          repository {
-            name
-          }
-          number
-          title
-          author {
-            login
-          }
-          comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
-            nodes {
-              url
-              author {
-                login
-              }
-            }
-          }
-        }
-    }
-    `;
-    };
-    const makeInnerIssueQuery = (repoName) => {
-        return `
-    ${repoName
-            .replaceAll('.', '')
-            .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
-        issues(first: 50 orderBy: {direction: DESC, field: UPDATED_AT}) {
-          nodes {
-            number
-            title
-            url
-            author {
-              login
-            }
-            createdAt
-            updatedAt
-            assignees(first: 5) {
-              nodes {
-                login
-              }
-            }
-            state
-            closedAt
-            repository {
-                name
-            }
-          }
-        }
-    }
-    `;
-    };
-    const makeInnerIssueCommentQuery = (repoName, number) => {
-        return `
-    ${repoName
-            .replaceAll('.', '')
-            .replaceAll('-', '')}${number}: repository(name: "${repoName}" owner: "kittycad") {
-        issue(number: ${number}) {
-          title
-          number
-          repository {
-            name
-          }
-          state
-          url
-          comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
-            nodes {
-              updatedAt
-              author {
-                login
-              }
-            }
-          }
-        }
-    }
-    `;
-    };
-    const innerQueries = getReposNames()
-        .map(repoName => makeInnerPRQuery(repoName))
-        .join('\n');
-    const projectsResponse = await octokit.graphql(`
+    const prsResponse = await octokit.graphql(`
       query{
-        ${innerQueries}
+        ${repos.map(makeInnerPRQuery).join('\n')}
       }
       `);
-    const PRGroupedByAuthor = {};
+    const prGroupedByAuthor = {};
     const PRsToGetCommentsFor = [];
-    Object.values(projectsResponse).forEach(repo => {
+    Object.values(prsResponse).forEach(repo => {
         repo.pullRequests.nodes.forEach(({ author, repository, state, url, title, updatedAt, number }) => {
             const login = author.login;
             if (login === 'dependabot')
                 return;
             if (cutOffDate.valueOf() > new Date(updatedAt).valueOf())
                 return;
-            if (!PRGroupedByAuthor[login]) {
-                PRGroupedByAuthor[login] = {
+            if (!prGroupedByAuthor[login]) {
+                prGroupedByAuthor[login] = {
                     PRs: [],
                     PRComments: [],
                     issuesOpened: [],
@@ -168,7 +60,7 @@ async function main() {
                     issuesComments: []
                 };
             }
-            PRGroupedByAuthor[login].PRs.push({
+            prGroupedByAuthor[login].PRs.push({
                 repo: repository.name,
                 number,
                 author: author.login,
@@ -205,8 +97,8 @@ async function main() {
         });
     });
     Object.values(commentGrouping).forEach(comment => {
-        if (!PRGroupedByAuthor[comment.author]) {
-            PRGroupedByAuthor[comment.author] = {
+        if (!prGroupedByAuthor[comment.author]) {
+            prGroupedByAuthor[comment.author] = {
                 PRs: [],
                 PRComments: [],
                 issuesOpened: [],
@@ -214,11 +106,11 @@ async function main() {
                 issuesComments: []
             };
         }
-        PRGroupedByAuthor[comment.author].PRComments.push(comment);
+        prGroupedByAuthor[comment.author].PRComments.push(comment);
     });
     const issuesResponse = await octokit.graphql(`
       query{
-        ${getReposNames().map(makeInnerIssueQuery).join('\n')}
+        ${repos.map(makeInnerIssueQuery).join('\n')}
       }
       `);
     const IssueTempObject = {};
@@ -300,8 +192,8 @@ async function main() {
             state: issue.state,
             title: issue.title
         };
-        if (!PRGroupedByAuthor[issue.creditTo]) {
-            PRGroupedByAuthor[issue.creditTo] = {
+        if (!prGroupedByAuthor[issue.creditTo]) {
+            prGroupedByAuthor[issue.creditTo] = {
                 PRs: [],
                 PRComments: [],
                 issuesOpened: [],
@@ -310,13 +202,13 @@ async function main() {
             };
         }
         if (issue.action === 'commented') {
-            PRGroupedByAuthor[issue.creditTo].issuesComments.push(issueInfo);
+            prGroupedByAuthor[issue.creditTo].issuesComments.push(issueInfo);
         }
         else if (issue.action === 'closed') {
-            PRGroupedByAuthor[issue.creditTo].issuesClosed.push(issueInfo);
+            prGroupedByAuthor[issue.creditTo].issuesClosed.push(issueInfo);
         }
         else if (issue.action === 'created') {
-            PRGroupedByAuthor[issue.creditTo].issuesOpened.push(issueInfo);
+            prGroupedByAuthor[issue.creditTo].issuesOpened.push(issueInfo);
         }
     });
     let markdownOutput = '';
@@ -325,8 +217,10 @@ async function main() {
         OPEN: 1,
         CLOSED: 0
     };
-    Object.entries(PRGroupedByAuthor).forEach(([login, details]) => {
+    const processAuthorGroups = ([login, details]) => {
         markdownOutput += `\n\n## ${loginToName(login)}`;
+        markdownOutput += `\n\n#### Human Summary`;
+        markdownOutput += `\n- _Add your summary here_`;
         if (details.PRs.length || details.PRComments.length) {
             markdownOutput += `\n\n#### PR activity`;
         }
@@ -355,66 +249,137 @@ async function main() {
         details.issuesComments.forEach(issue => {
             markdownOutput += `\n- 📝 Comment . [${issue.repo} / ${issue.title}](${issue.url})`;
         });
-    });
-    core.debug(`PRGroupedByAuthor: ${(0, util_1.inspect)(PRGroupedByAuthor)}`);
+    };
+    const orderedContributors = Object.entries(prGroupedByAuthor).sort(([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1));
+    const devs = ['brwhale', 'iterion', 'Irev-Dev', 'hanbollar', 'jessfraz'];
+    const devContributors = orderedContributors.filter(([login]) => devs.includes(login));
+    const nonDevContributors = orderedContributors.filter(([login]) => !devs.includes(login));
+    devContributors.forEach(processAuthorGroups);
+    markdownOutput += `\n\n<br/>\n\n -- **Other Contributors** --`;
+    nonDevContributors.forEach(processAuthorGroups);
+    core.debug(`PRGroupedByAuthor: ${(0, util_1.inspect)(prGroupedByAuthor)}`);
     core.setOutput('markdown', markdownOutput);
 }
 main();
 function loginToName(login) {
     const loginToNameMap = {
-        brwhale: 'Garrett',
-        iterion: 'Adam',
-        jessfraz: 'Jess',
         'Irev-Dev': 'Kurt',
+        brwhale: 'Garrett',
         hanbollar: 'Hannah',
-        JordanNoone: 'Jordan',
+        iterion: 'Adam',
         JBEmbedded: 'JB',
-        mansoorsiddiqui: 'Mansoor'
+        jessfraz: 'Jess',
+        JordanNoone: 'Jordan',
+        mansoorsiddiqui: 'Mansoor',
+        vonniwilliams: 'Vonni'
     };
     return loginToNameMap[login] || login;
 }
-function getReposNames() {
-    return [
-        '.github-private',
-        '.github',
-        'action-convert-directory',
-        'action-install-cli',
-        'api-deux',
-        'cio',
-        'cli',
-        'Clowder',
-        'community',
-        'configs',
-        'db',
-        'desktop',
-        'discord-bots',
-        'docs',
-        'documentation',
-        'Eng',
-        'engine-api',
-        'engine',
-        'executor',
-        'Furrture-Planning',
-        'graphs',
-        'hooks',
-        'infra',
-        'jordansPersonalLitterbox',
-        'kittycad.go',
-        'kittycad.py',
-        'kittycad.rs',
-        'kittycad.ts',
-        'litterbox',
-        'Media-Brand',
-        'mysql-watcher',
-        'OldKittyCADApp',
-        'payment-tools',
-        'PetStore',
-        'store',
-        'support',
-        'third-party-api-clients',
-        'ts-actions',
-        'website'
-    ];
+function makeInnerPRQuery(repoName) {
+    return `
+  ${repoName
+        .replaceAll('.', '')
+        .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
+      pullRequests(first: 50, orderBy: {direction: DESC, field: UPDATED_AT}) {
+        nodes {
+          repository {
+            name
+            id
+          }
+          number
+          url
+          title
+          id
+          updatedAt
+          state
+          author {
+            login
+          }
+        }
+      }
+  }
+  `;
+}
+function makeInnerPRCommentQuery(repoName, PrNumber) {
+    return `
+  ${repoName
+        .replaceAll('.', '')
+        .replaceAll('-', '')}${PrNumber}: repository(name: "${repoName}" owner: "kittycad") {
+  pullRequest(number: ${PrNumber}) {
+        repository {
+          name
+        }
+        number
+        title
+        author {
+          login
+        }
+        comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
+          nodes {
+            url
+            author {
+              login
+            }
+          }
+        }
+      }
+  }
+  `;
+}
+function makeInnerIssueQuery(repoName) {
+    return `
+  ${repoName
+        .replaceAll('.', '')
+        .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
+      issues(first: 50 orderBy: {direction: DESC, field: UPDATED_AT}) {
+        nodes {
+          number
+          title
+          url
+          author {
+            login
+          }
+          createdAt
+          updatedAt
+          assignees(first: 5) {
+            nodes {
+              login
+            }
+          }
+          state
+          closedAt
+          repository {
+              name
+          }
+        }
+      }
+  }
+  `;
+}
+function makeInnerIssueCommentQuery(repoName, number) {
+    return `
+  ${repoName
+        .replaceAll('.', '')
+        .replaceAll('-', '')}${number}: repository(name: "${repoName}" owner: "kittycad") {
+      issue(number: ${number}) {
+        title
+        number
+        repository {
+          name
+        }
+        state
+        url
+        comments(first: 20 orderBy: {direction: DESC, field: UPDATED_AT}) {
+          nodes {
+            updatedAt
+            author {
+              login
+            }
+          }
+        }
+      }
+  }
+  `;
 }
 
 
