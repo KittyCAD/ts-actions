@@ -1,0 +1,35 @@
+name: "autogen-readme-list"
+
+on:
+    pull_request:
+
+jobs:
+  autogen-readme-list:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./weekly-contributions/
+        id: weekly-contributions
+        with:
+          github-token: ${{ secrets.GLOBAL_PAT }}
+          path: './src/autogen-readme-list/demo-readme.md'
+      - name: Check for modified files
+        id: git-check
+        run: echo ::set-output name=modified::$(if git diff-index --ignore-submodules --quiet HEAD --; then echo "false"; else echo "true"; fi)
+      - name: diff debug # TODO figure out why this returning files, when git status says there's nothing in the working tree
+        run: git diff-index --ignore-submodules HEAD
+      - name: git status
+        id: git-status
+        run: git status
+      - name: stage dist if modified
+        if: steps.git-check.outputs.modified == 'true'
+        run: git add dist/.
+      - name: Commit changes in dist, if any
+        if: steps.git-check.outputs.modified == 'true'
+        run: |
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+            git fetch origin
+            git commit -m "Updating build files in dist/"
+            git push origin ${{github.event.pull_request.head.ref }}
