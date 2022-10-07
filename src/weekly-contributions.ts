@@ -8,7 +8,6 @@ type PRStates = IssueStates | 'MERGED'
 async function main() {
   const token = core.getInput('github-token')
   const dateStr = core.getInput('date')
-  const repos = JSON.parse(core.getInput('repos'))
   const markdownPrefix = core.getInput('markdown-prefix') || ''
   const octokit = github.getOctokit(token)
 
@@ -16,6 +15,29 @@ async function main() {
 
   const cutOffDate = new Date(date)
   cutOffDate.setDate(cutOffDate.getDate() - 7)
+
+  const reposResponse: {
+    organization: {
+      repositories: {
+        nodes: {name: string}[]
+      }
+    }
+  } = await octokit.graphql(
+    `
+    query {
+        organization(login: "KittyCAD") {
+        repositories(first: 50){ 
+          nodes {
+            name
+          }
+        }
+      }
+    }
+      `
+  )
+  const repos = reposResponse.organization.repositories.nodes.map(
+    ({name}) => name
+  )
 
   const prsResponse: {
     [repoName: string]: {

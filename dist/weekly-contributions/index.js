@@ -32,12 +32,23 @@ const util_1 = __nccwpck_require__(1669);
 async function main() {
     const token = core.getInput('github-token');
     const dateStr = core.getInput('date');
-    const repos = JSON.parse(core.getInput('repos'));
     const markdownPrefix = core.getInput('markdown-prefix') || '';
     const octokit = github.getOctokit(token);
     const date = dateStr ? new Date(dateStr) : new Date();
     const cutOffDate = new Date(date);
     cutOffDate.setDate(cutOffDate.getDate() - 7);
+    const reposResponse = await octokit.graphql(`
+    query {
+        organization(login: "KittyCAD") {
+        repositories(first: 50){ 
+          nodes {
+            name
+          }
+        }
+      }
+    }
+      `);
+    const repos = reposResponse.organization.repositories.nodes.map(({ name }) => name);
     const prsResponse = await octokit.graphql(`
       query{
         ${repos.map(makeInnerPRQuery).join('\n')}
