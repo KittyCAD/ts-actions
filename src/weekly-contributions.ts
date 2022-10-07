@@ -367,49 +367,50 @@ async function main() {
     OPEN: 1,
     CLOSED: 0
   }
-  const processAuthorGroups = ([login, details]: [
-    string,
-    PRGroupedByAuthor[string]
-  ]) => {
-    markdownOutput += `\n\n## ${loginToName(login)}`
-    markdownOutput += `\n\n#### Human Summary`
-    markdownOutput += `\n- _Add your summary here_`
-    if (details.PRs.length || details.PRComments.length) {
-      markdownOutput += `\n\n#### PR activity`
-    }
-    details.PRs.sort((a, b) => rating[b.state] - rating[a.state]).forEach(
-      PR => {
-        const prEmojiMap = {
-          MERGED: '💅 Merged .....',
-          OPEN: '⏳ Open ........',
-          CLOSED: '🛑 Closed ......'
-        }
-        markdownOutput += `\n- ${prEmojiMap[PR.state]} [${PR.repo} / ${
-          PR.title
-        }](${PR.url})`
+  const processAuthorGroups =
+    (shouldPromptSummary = false) =>
+    ([login, details]: [string, PRGroupedByAuthor[string]]) => {
+      markdownOutput += `\n\n## ${loginToName(login)}`
+      if (shouldPromptSummary) {
+        markdownOutput += `\n\n#### Human Summary`
+        markdownOutput += `\n- _Add your summary here_`
       }
-    )
-    details.PRComments.forEach(PR => {
-      markdownOutput += `\n- 📝 Comment . [${PR.repo} / ${PR.title}](${PR.url})`
-    })
+      if (details.PRs.length || details.PRComments.length) {
+        markdownOutput += `\n\n#### PR activity`
+      }
+      details.PRs.sort((a, b) => rating[b.state] - rating[a.state]).forEach(
+        PR => {
+          const prEmojiMap = {
+            MERGED: '💅 Merged .....',
+            OPEN: '⏳ Open ........',
+            CLOSED: '🛑 Closed ......'
+          }
+          markdownOutput += `\n- ${prEmojiMap[PR.state]} [${PR.repo} / ${
+            PR.title
+          }](${PR.url})`
+        }
+      )
+      details.PRComments.forEach(PR => {
+        markdownOutput += `\n- 📝 Comment . [${PR.repo} / ${PR.title}](${PR.url})`
+      })
 
-    if (
-      details.issuesClosed.length ||
-      details.issuesOpened.length ||
-      details.issuesComments.length
-    ) {
-      markdownOutput += `\n\n#### Issue activity`
+      if (
+        details.issuesClosed.length ||
+        details.issuesOpened.length ||
+        details.issuesComments.length
+      ) {
+        markdownOutput += `\n\n#### Issue activity`
+      }
+      details.issuesClosed.forEach(issue => {
+        markdownOutput += `\n- ✅ Closed ...... [${issue.repo} / ${issue.title}](${issue.url})`
+      })
+      details.issuesOpened.forEach(issue => {
+        markdownOutput += `\n- ⏳ Open ........ [${issue.repo} / ${issue.title}](${issue.url})`
+      })
+      details.issuesComments.forEach(issue => {
+        markdownOutput += `\n- 📝 Comment . [${issue.repo} / ${issue.title}](${issue.url})`
+      })
     }
-    details.issuesClosed.forEach(issue => {
-      markdownOutput += `\n- ✅ Closed ...... [${issue.repo} / ${issue.title}](${issue.url})`
-    })
-    details.issuesOpened.forEach(issue => {
-      markdownOutput += `\n- ⏳ Open ........ [${issue.repo} / ${issue.title}](${issue.url})`
-    })
-    details.issuesComments.forEach(issue => {
-      markdownOutput += `\n- 📝 Comment . [${issue.repo} / ${issue.title}](${issue.url})`
-    })
-  }
   const orderedContributors = Object.entries(prGroupedByAuthor).sort(
     ([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1)
   )
@@ -421,9 +422,9 @@ async function main() {
     ([login]) => !devs.includes(login)
   )
 
-  devContributors.forEach(processAuthorGroups)
+  devContributors.forEach(processAuthorGroups(true))
   markdownOutput += `\n\n<br/>\n\n -- **Other Contributors** --`
-  nonDevContributors.forEach(processAuthorGroups)
+  nonDevContributors.forEach(processAuthorGroups())
 
   core.debug(`PRGroupedByAuthor: ${inspect(prGroupedByAuthor)}`)
   core.setOutput('markdown', markdownOutput)
