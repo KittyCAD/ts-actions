@@ -8,8 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: ./weekly-contributions/
-        id: weekly-contributions
+      - uses: ./autogen-readme-list/
+        id: autogen-readme-list
         with:
           github-token: ${{ secrets.GLOBAL_PAT }}
           path: './src/autogen-readme-list/demo-readme.md'
