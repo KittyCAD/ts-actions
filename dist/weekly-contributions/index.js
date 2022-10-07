@@ -217,10 +217,12 @@ async function main() {
         OPEN: 1,
         CLOSED: 0
     };
-    const processAuthorGroups = ([login, details]) => {
+    const processAuthorGroups = (shouldPromptSummary = false) => ([login, details]) => {
         markdownOutput += `\n\n## ${loginToName(login)}`;
-        markdownOutput += `\n\n#### Human Summary`;
-        markdownOutput += `\n- _Add your summary here_`;
+        if (shouldPromptSummary) {
+            markdownOutput += `\n\n#### Human Summary`;
+            markdownOutput += `\n- _Add your summary here_`;
+        }
         if (details.PRs.length || details.PRComments.length) {
             markdownOutput += `\n\n#### PR activity`;
         }
@@ -254,9 +256,9 @@ async function main() {
     const devs = ['brwhale', 'iterion', 'Irev-Dev', 'hanbollar', 'jessfraz'];
     const devContributors = orderedContributors.filter(([login]) => devs.includes(login));
     const nonDevContributors = orderedContributors.filter(([login]) => !devs.includes(login));
-    devContributors.forEach(processAuthorGroups);
+    devContributors.forEach(processAuthorGroups(true));
     markdownOutput += `\n\n<br/>\n\n -- **Other Contributors** --`;
-    nonDevContributors.forEach(processAuthorGroups);
+    nonDevContributors.forEach(processAuthorGroups());
     core.debug(`PRGroupedByAuthor: ${(0, util_1.inspect)(prGroupedByAuthor)}`);
     core.setOutput('markdown', markdownOutput);
 }
