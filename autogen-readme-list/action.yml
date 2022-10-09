@@ -1,0 +1,13 @@
+name: 'generate readme list for given repo tags'
+description: 'generate readme list for given repo tags'
+author: 'KittyCAD'
+inputs:
+  github-token:
+    required: true
+    description: github token
+  path:
+    required: true
+    description: path to readme
+runs:
+  using: 'node16'
+  main: '../dist/autogen-readme-list/index.js'

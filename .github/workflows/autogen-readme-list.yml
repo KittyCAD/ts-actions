@@ -1,0 +1,29 @@
+name: "autogen-readme-list"
+
+on:
+    pull_request:
+
+jobs:
+  autogen-readme-list:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./autogen-readme-list/
+        id: autogen-readme-list
+        with:
+          github-token: ${{ secrets.GLOBAL_PAT }}
+          path: './src/autogen-readme-list/demo-readme.md'
+      - name: setup gh cli
+        run: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+      - name: comment diff to if change to demo-readme is as expected
+        env:
+              PRNUM: ${{ github.event.pull_request.number }}
+        run: |
+          diffstr=$(git diff)
+          body='```'
+          body+=$'\n'
+          body+="${diffstr}"
+          body+=$'\n'
+          body+='```'
+          gh pr comment $PRNUM --body "$body"
