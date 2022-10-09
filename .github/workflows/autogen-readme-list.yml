@@ -20,5 +20,10 @@ jobs:
         env:
               PRNUM: ${{ github.event.pull_request.number }}
         run: |
-          diffstr="```\n$(git diff)\n```"
-          gh pr comment $PRNUM --body "$diffstr"
+          diffstr=$(git diff)
+          body='```'
+          body+=$'\n'
+          body+="${diffstr}"
+          body+=$'\n'
+          body+='```'
+          gh pr comment $PRNUM --body "$body"
