@@ -62,6 +62,7 @@ async function run(): Promise<void> {
     core.info(`Generated a new key, ID: ${data.id}`)
 
     const pubKeyResponse = await octokit.rest.actions.getOrgPublicKey({ org, })
+    const pubKeyID = pubKeyResponse.data.key_id
     const pubKey = Buffer.from(pubKeyResponse.data.key, 'base64')
 
     // Encrypt using LibSodium
@@ -72,10 +73,11 @@ async function run(): Promise<void> {
     // Base64 the encrypted secret
     const encrypted = Buffer.from(encryptedBytes).toString('base64')
 
-    core.info("Updating ${org} secret ${secretName} to new key")
+    core.info(`Updating ${org} secret ${secretName} to new key`)
     octokit.rest.actions.createOrUpdateOrgSecret({
       org: org,
       secret_name: secretName,
+      key_id: pubKeyID,
       encrypted_value: encrypted,
       visibility: 'private',
     })
