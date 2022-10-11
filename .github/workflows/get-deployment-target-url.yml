@@ -1,7 +1,12 @@
-name: "Get deployment target url test"
+name: 'Get deployment target url test'
 
 on:
-    pull_request:
+  pull_request:
+    paths:
+      - src/get-deployment-target-url.ts
+      - dist/get-deployment-target-url/**.js
+      - .github/workflows/get-deployment-target-url.yml
+      - get-deployment-target-url/action.yml
 
 jobs:
   get-deployment-target-url-test:
@@ -17,9 +22,9 @@ jobs:
           repo: docs
       - name: setup gh cli
         run: |
-            echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
       - name: comment diff
         env:
-            PRNUM: ${{ github.event.pull_request.number }}
-            BODY: "found a url: ${{ steps.get-preview-url.outputs.targeturl }}"
+          PRNUM: ${{ github.event.pull_request.number }}
+          BODY: 'found a url: ${{ steps.get-preview-url.outputs.targeturl }}'
         run: gh pr comment $PRNUM --body "$BODY"

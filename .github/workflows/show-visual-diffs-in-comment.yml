@@ -1,7 +1,12 @@
-name: "Show visual-diffs in comment"
+name: 'Show visual-diffs in comment'
 
 on:
-    pull_request:
+  pull_request:
+    paths:
+      - src/show-visual-diffs-in-comment.ts
+      - dist/show-visual-diffs-in-comment/**.js
+      - .github/workflows/show-visual-diffs-in-comment.yml
+      - show-visual-diffs-in-comment/action.yml
 
 jobs:
   comment-visual-diffs:
@@ -14,9 +19,9 @@ jobs:
           gcloud-credentials-json: ${{ secrets.GCLOUD_CREDENTIALS_JSON }}
       - name: setup gh cli
         run: |
-            echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
       - name: comment diff
         env:
-            PRNUM: ${{ github.event.pull_request.number }}
-            BODY: ${{ steps.getbody.outputs.body }}
+          PRNUM: ${{ github.event.pull_request.number }}
+          BODY: ${{ steps.getbody.outputs.body }}
         run: gh pr comment $PRNUM --body "$BODY"
