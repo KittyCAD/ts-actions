@@ -9,7 +9,8 @@
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint src/**/*.ts",
-    "package": "ncc build lib/autogen-readme-list/autogen-readme-list.js --source-map --license licenses.txt -o dist/autogen-readme-list && ncc build lib/weekly-contributions.js --source-map --license licenses.txt -o dist/weekly-contributions && ncc build lib/add-issues-to-project.js --source-map --license licenses.txt -o dist/add-issues-to-project && ncc build lib/show-visual-diffs-in-comment.js --source-map --license licenses.txt -o dist/show-visual-diffs-in-comment && ncc build lib/get-deployment-target-url.js --source-map --license licenses.txt -o dist/get-deployment-target-url && yarn cleanup && yarn package:create-openapi-types",
+    "package": "ncc build lib/autogen-readme-list/autogen-readme-list.js --source-map --license licenses.txt -o dist/autogen-readme-list && ncc build lib/weekly-contributions.js --source-map --license licenses.txt -o dist/weekly-contributions && ncc build lib/add-issues-to-project.js --source-map --license licenses.txt -o dist/add-issues-to-project && ncc build lib/show-visual-diffs-in-comment.js --source-map --license licenses.txt -o dist/show-visual-diffs-in-comment && ncc build lib/get-deployment-target-url.js --source-map --license licenses.txt -o dist/get-deployment-target-url && yarn cleanup && yarn package:update-ts-machine-key && yarn package:create-openapi-types",
+    "package:update-ts-machine-key": "ncc build lib/update-ts-machine-key.js --source-map --license licenses.txt -o dist/update-ts-machine-key",
     "package:create-openapi-types": "rm -rf dist/create-openapi-types/ && ncc build lib/create-openapi-types.js --source-map --license licenses.txt -o dist/create-openapi-types",
     "test": "jest",
     "all": "npm run build && npm run format && npm run lint && npm run package && npm test",
@@ -30,8 +31,11 @@
     "@actions/core": "^1.6.0",
     "@actions/github": "^5.0.1",
     "@google-cloud/storage": "^5.20.5",
+    "@types/libsodium-wrappers": "^0.7.10",
     "filestack-js": "^3.25.0",
     "globby": "^13.1.1",
+    "libsodium-wrappers": "^0.7.10",
+    "node-fetch": "^3.2.10",
     "openapi-typescript": "^5.4.0"
   },
   "devDependencies": {

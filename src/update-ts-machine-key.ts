@@ -1,0 +1,94 @@
+import * as core from '@actions/core'
+import * as github from '@actions/github'
+import fetch, {Headers} from 'node-fetch';
+import libsodium from 'libsodium-wrappers'
+import {inspect} from 'util'
+
+const re = /tskey-(?:auth-)?(?<keyID>.+)-.*/
+const org = 'KittyCAD'
+const fiveDaysInMillis = 5 * 3600 * 1000
+
+async function run(): Promise<void> {
+  const token = core.getInput('token')
+  const currentTSMachineKey = core.getInput('current-ts-machine-key')
+  const tsAPIKey = core.getInput('ts-api-key')
+  const tailnet = core.getInput('tailnet')
+  const secretName = core.getInput('org-secret-name')
+  const matches = currentTSMachineKey.match(re)
+  if (matches === null) {
+    core.info(`Current machine key is not in a valid format`)
+    return
+  }
+  const currentKeyID = matches[1]
+  const newKeyURL = `https://api.tailscale.com/api/v2/tailnet/${tailnet}/keys`
+  const currentKeyURL = `${newKeyURL}/${currentKeyID}`
+
+  try {
+    const octokit = github.getOctokit(token || '')
+    const headers = new Headers({
+      'Authorization': 'Basic ' + Buffer.from(tsAPIKey + ":").toString('base64'),
+    })
+
+    // Check current key expiry
+    var response = await fetch(currentKeyURL, {headers: headers})
+    if (!response.ok) {
+      core.info(`Unable to fetch info about key ${currentKeyID}`)
+      return
+    }
+    var data = (await response.json()) as any
+    const keyExpiry = Date.parse(data.expires)
+    const dateDiff = keyExpiry - Date.now()
+    // If we're not about to expire, log and continue
+    if (dateDiff > fiveDaysInMillis) {
+      core.info(`Key is not about to expire, expiry: ${keyExpiry}`)
+      return
+    }
+
+    core.info(`Key is about to expire (${keyExpiry}), creating and uploading a new key.`)
+    const newKeyCapabilities = {
+      "capabilities": {
+        "devices": {
+          "create": {
+            "reusable": true,
+            "ephemeral": true,
+            "preauthorized": false,
+            "tags": [],
+          },
+        },
+      },
+    }
+    response = await fetch(newKeyURL, {headers: headers, method: 'POST', body: JSON.stringify(newKeyCapabilities)})
+    if (!response.ok) {
+      core.info(`Unable to create a new Tailscale machine key`)
+      return
+    }
+    data = (await response.json()) as any
+
+    const pubKeyResponse = await octokit.rest.actions.getOrgPublicKey({ org, })
+    const pubKey = Buffer.from(pubKeyResponse.data.key)
+
+    // Convert the message and key to Uint8Array's (Buffer implements that interface)
+    const machineKeyBytes = Buffer.from(data.key)
+
+    // Encrypt using LibSodium
+    // You must await ready before using libsodium
+    await libsodium.ready
+    const encryptedBytes = libsodium.crypto_box_seal(machineKeyBytes, pubKey)
+
+    // Base64 the encrypted secret
+    const encrypted = Buffer.from(encryptedBytes).toString('base64')
+
+    core.info("Updating Org secret to new key")
+    // octokit.rest.actions.createOrUpdateOrgSecret({
+    //   org: org,
+    //   secret_name: secretName,
+    //   encrypted_value: encrypted,
+    //   visibility: 'private',
+    // })
+  } catch (e) {
+    core.debug(`error: ${inspect(e)}`)
+    throw e
+  }
+}
+
+run()
