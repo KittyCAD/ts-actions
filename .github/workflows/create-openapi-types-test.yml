@@ -2,6 +2,11 @@ name: "create openapi types"
 
 on:
     pull_request:
+      paths:
+      - src/create-openapi-types-test.ts
+      - dist/create-openapi-types-test/**.js
+      - .github/workflows/create-openapi-types-test.yml
+      - create-openapi-types-test/action.yml
 
 jobs:
   get-deployment-target-url-test:
