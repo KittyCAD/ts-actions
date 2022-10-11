@@ -82,21 +82,22 @@ async function run() {
         }
         core.info(`Key is about to expire (${keyExpiry}), creating and uploading a new key.`);
         // Reuse capabilities of the existing key
-        const newKeyCapabilities = { capabilities: data.capabilities };
-        response = await (0, node_fetch_1.default)(newKeyURL, { headers: headers, method: 'POST', body: JSON.stringify(newKeyCapabilities) });
-        if (!response.ok) {
-            core.info(`Unable to create a new Tailscale machine key`);
-            return;
-        }
-        data = (await response.json());
-        // Convert the message and key to Uint8Array's (Buffer implements that interface)
-        const machineKeyBytes = Buffer.from(data.key);
+        // const newKeyCapabilities = { capabilities: data.capabilities }
+        // response = await fetch(newKeyURL, {headers: headers, method: 'POST', body: JSON.stringify(newKeyCapabilities)})
+        // if (!response.ok) {
+        //   core.info(`Unable to create a new Tailscale machine key`)
+        //   return
+        // }
+        // data = (await response.json()) as any
+        // // Convert the message and key to Uint8Array's (Buffer implements that interface)
+        // const machineKeyBytes = Buffer.from(data.key)
+        const machineKeyBytes = Buffer.from("fake-bytes");
         // Just for debugging for now
         // Don't log the key, but do dump everything else
-        delete data.key;
-        core.info((0, util_1.inspect)(data, { depth: 10 }));
+        // delete data.key
+        // core.info(inspect(data, { depth: 10 }))
         const pubKeyResponse = await octokit.rest.actions.getOrgPublicKey({ org, });
-        const pubKey = Buffer.from(pubKeyResponse.data.key);
+        const pubKey = Buffer.from(pubKeyResponse.data.key, 'base64');
         // Encrypt using LibSodium
         // You must await ready before using libsodium
         await libsodium_wrappers_1.default.ready;
