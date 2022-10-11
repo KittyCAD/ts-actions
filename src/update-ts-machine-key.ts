@@ -41,6 +41,9 @@ async function run(): Promise<void> {
     var data = (await response.json()) as any
     const keyExpiry = Date.parse(data.expires)
     const dateDiff = keyExpiry - Date.now()
+    core.info(`Current Date: ${Date.now()}`)
+    core.info(`Date diff: ${dateDiff}`)
+    core.info(`Lead time millis: ${rotationLeadTimeInMillis}`)
     // If we're not about to expire, log and continue
     if (dateDiff > rotationLeadTimeInMillis) {
       core.info(`Key is not about to expire, expiry: ${keyExpiry}`)
