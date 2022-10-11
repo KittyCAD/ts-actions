@@ -51,7 +51,7 @@ async function run() {
     const tailnet = core.getInput('tailnet');
     const secretName = core.getInput('org-secret-name');
     const rotationLeadTimeInDays = core.getInput('rotation-lead-time');
-    const rotationLeadTimeInMillis = parseInt(rotationLeadTimeInDays) * 3600 * 1000;
+    const rotationLeadTimeInMillis = parseInt(rotationLeadTimeInDays) * 24 * 3600 * 1000;
     const matches = currentTSMachineKey.match(re);
     if (matches === null) {
         core.info(`Current machine key is not in a valid format`);
@@ -75,12 +75,9 @@ async function run() {
         var data = (await response.json());
         const keyExpiry = Date.parse(data.expires);
         const dateDiff = keyExpiry - Date.now();
-        core.info(`Current Date: ${Date.now()}`);
-        core.info(`Date diff: ${dateDiff}`);
-        core.info(`Lead time millis: ${rotationLeadTimeInMillis}`);
         // If we're not about to expire, log and continue
         if (dateDiff > rotationLeadTimeInMillis) {
-            core.info(`Key is not about to expire, expiry: ${keyExpiry}`);
+            core.info(`Key is not about to expire, expiry: ${data.expires}`);
             return;
         }
         core.info(`Key is about to expire (${keyExpiry}), creating and uploading a new key.`);
