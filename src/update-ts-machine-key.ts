@@ -37,7 +37,7 @@ async function run(): Promise<void> {
       return
     }
     var data = (await response.json()) as any
-    core.info(data)
+    core.info(inspect(data))
     const keyExpiry = Date.parse(data.expires)
     const dateDiff = keyExpiry - Date.now()
     // If we're not about to expire, log and continue
