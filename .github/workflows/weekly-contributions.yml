@@ -2,6 +2,11 @@ name: 'get markdowns summary of weekly contributions'
 
 on:
   pull_request:
+    paths:
+      - src/weekly-contributions.ts
+      - dist/weekly-contributions/**.js
+      - .github/workflows/weekly-contributions.yml
+      - weekly-contributions/action.yml
 
 jobs:
   weekly-contributions-test:
