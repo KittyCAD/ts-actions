@@ -43,8 +43,8 @@ const node_fetch_1 = __importStar(__nccwpck_require__(6882));
 const libsodium_wrappers_1 = __importDefault(__nccwpck_require__(713));
 const util_1 = __nccwpck_require__(1669);
 const re = /tskey-(?:auth-)?(?<keyID>.+)-.*/;
-const org = 'KittyCAD';
 async function run() {
+    const org = github.context.repo.owner;
     const token = core.getInput('token');
     const currentTSMachineKey = core.getInput('current-ts-machine-key');
     const tsAPIKey = core.getInput('ts-api-key');
@@ -54,7 +54,7 @@ async function run() {
     const rotationLeadTimeInMillis = parseInt(rotationLeadTimeInDays) * 24 * 3600 * 1000;
     const matches = currentTSMachineKey.match(re);
     if (matches === null) {
-        core.info(`Current machine key is not in a valid format`);
+        core.setFailed(`Current machine key is not in a valid format`);
         return;
     }
     const currentKeyID = matches[1];
@@ -69,7 +69,7 @@ async function run() {
         // Check current key expiry
         var response = await (0, node_fetch_1.default)(currentKeyURL, { headers: headers });
         if (!response.ok) {
-            core.info(`Unable to fetch info about key ${currentKeyID}`);
+            core.setFailed(`Unable to fetch info about key ${currentKeyID}`);
             return;
         }
         var data = (await response.json());
@@ -82,20 +82,16 @@ async function run() {
         }
         core.info(`Key is about to expire (${keyExpiry}), creating and uploading a new key.`);
         // Reuse capabilities of the existing key
-        // const newKeyCapabilities = { capabilities: data.capabilities }
-        // response = await fetch(newKeyURL, {headers: headers, method: 'POST', body: JSON.stringify(newKeyCapabilities)})
-        // if (!response.ok) {
-        //   core.info(`Unable to create a new Tailscale machine key`)
-        //   return
-        // }
-        // data = (await response.json()) as any
-        // // Convert the message and key to Uint8Array's (Buffer implements that interface)
-        // const machineKeyBytes = Buffer.from(data.key)
-        const machineKeyBytes = Buffer.from("fake-bytes");
-        // Just for debugging for now
-        // Don't log the key, but do dump everything else
-        // delete data.key
-        // core.info(inspect(data, { depth: 10 }))
+        const newKeyCapabilities = { capabilities: data.capabilities };
+        response = await (0, node_fetch_1.default)(newKeyURL, { headers: headers, method: 'POST', body: JSON.stringify(newKeyCapabilities) });
+        if (!response.ok) {
+            core.setFailed(`Unable to create a new Tailscale machine key`);
+            return;
+        }
+        data = (await response.json());
+        // Convert the message and key to Uint8Array's (Buffer implements that interface)
+        const machineKeyBytes = Buffer.from(data.key);
+        core.info(`Generated a new key, ID: ${data.id}`);
         const pubKeyResponse = await octokit.rest.actions.getOrgPublicKey({ org, });
         const pubKey = Buffer.from(pubKeyResponse.data.key, 'base64');
         // Encrypt using LibSodium
@@ -104,13 +100,13 @@ async function run() {
         const encryptedBytes = libsodium_wrappers_1.default.crypto_box_seal(machineKeyBytes, pubKey);
         // Base64 the encrypted secret
         const encrypted = Buffer.from(encryptedBytes).toString('base64');
-        core.info("Updating Org secret to new key");
-        // octokit.rest.actions.createOrUpdateOrgSecret({
-        //   org: org,
-        //   secret_name: secretName,
-        //   encrypted_value: encrypted,
-        //   visibility: 'private',
-        // })
+        core.info("Updating ${org} secret ${secretName} to new key");
+        octokit.rest.actions.createOrUpdateOrgSecret({
+            org: org,
+            secret_name: secretName,
+            encrypted_value: encrypted,
+            visibility: 'private',
+        });
     }
     catch (e) {
         core.debug(`error: ${(0, util_1.inspect)(e)}`);
