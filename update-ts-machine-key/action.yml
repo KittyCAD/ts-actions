@@ -17,6 +17,10 @@ inputs:
   org-secret-name:
     required: true
     description: 'Org secret to update'
+  rotation-lead-time:
+    required: false
+    default: 7
+    description: 'Number of days in advance to rotate a given key'
 runs:
   using: 'node16'
   main: '../dist/update-ts-machine-key/index.js'

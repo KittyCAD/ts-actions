@@ -44,13 +44,14 @@ const libsodium_wrappers_1 = __importDefault(__nccwpck_require__(713));
 const util_1 = __nccwpck_require__(1669);
 const re = /tskey-(?:auth-)?(?<keyID>.+)-.*/;
 const org = 'KittyCAD';
-const fiveDaysInMillis = 5 * 3600 * 1000;
 async function run() {
     const token = core.getInput('token');
     const currentTSMachineKey = core.getInput('current-ts-machine-key');
     const tsAPIKey = core.getInput('ts-api-key');
     const tailnet = core.getInput('tailnet');
     const secretName = core.getInput('org-secret-name');
+    const rotationLeadTimeInDays = core.getInput('rotation-lead-time');
+    const rotationLeadTimeInMillis = parseInt(rotationLeadTimeInDays) * 3600 * 1000;
     const matches = currentTSMachineKey.match(re);
     if (matches === null) {
         core.info(`Current machine key is not in a valid format`);
@@ -71,10 +72,11 @@ async function run() {
             return;
         }
         var data = (await response.json());
+        core.info(data);
         const keyExpiry = Date.parse(data.expires);
         const dateDiff = keyExpiry - Date.now();
         // If we're not about to expire, log and continue
-        if (dateDiff > fiveDaysInMillis) {
+        if (dateDiff > rotationLeadTimeInMillis) {
             core.info(`Key is not about to expire, expiry: ${keyExpiry}`);
             return;
         }
