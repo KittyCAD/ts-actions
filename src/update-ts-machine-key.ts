@@ -24,6 +24,8 @@ async function run(): Promise<void> {
   const newKeyURL = `https://api.tailscale.com/api/v2/tailnet/${tailnet}/keys`
   const currentKeyURL = `${newKeyURL}/${currentKeyID}`
 
+  core.info(`Attempting to rotate any key due to expire in the next ${rotationLeadTimeInDays} days`)
+
   try {
     const octokit = github.getOctokit(token || '')
     const headers = new Headers({

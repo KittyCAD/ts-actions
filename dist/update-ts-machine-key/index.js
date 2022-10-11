@@ -60,6 +60,7 @@ async function run() {
     const currentKeyID = matches[1];
     const newKeyURL = `https://api.tailscale.com/api/v2/tailnet/${tailnet}/keys`;
     const currentKeyURL = `${newKeyURL}/${currentKeyID}`;
+    core.info(`Attempting to rotate any key due to expire in the next ${rotationLeadTimeInDays} days`);
     try {
         const octokit = github.getOctokit(token || '');
         const headers = new node_fetch_1.Headers({
