@@ -4,29 +4,19 @@ import fetch, {Headers} from 'node-fetch';
 import libsodium from 'libsodium-wrappers'
 import {inspect} from 'util'
 
-const re = /tskey-(?:auth-)?(?<keyID>.+)-.*/
-
 async function run(): Promise<void> {
   const org = github.context.repo.owner
   const token = core.getInput('token')
   const tsAPIKey = core.getInput('ts-api-key')
-  const currentTSMachineKey = core.getInput('current-ts-machine-key')
   const tailnet = core.getInput('tailnet')
   const secretName = core.getInput('org-secret-name')
-  const rotationLeadTimeInDays = core.getInput('rotation-lead-time')
+  const maximumKeyAgeInDays = core.getInput('maximum-key-age-in-days')
   const secretType = core.getInput('secret-type')
 
-  const rotationLeadTimeInMillis = parseInt(rotationLeadTimeInDays) * 24 * 3600 * 1000
-  const matches = currentTSMachineKey.match(re)
-  if (matches === null) {
-    core.setFailed(`Current machine key is not in a valid format`)
-    return
-  }
-  const currentKeyID = matches[1]
+  const maximumKeyAgeInMillis = parseInt(maximumKeyAgeInDays) * 24 * 3600 * 1000
   const newKeyURL = `https://api.tailscale.com/api/v2/tailnet/${tailnet}/keys`
-  const currentKeyURL = `${newKeyURL}/${currentKeyID}`
 
-  core.info(`Attempting to rotate any key due to expire in the next ${rotationLeadTimeInDays} days`)
+  core.info(`Attempting to rotate any key older than ${maximumKeyAgeInDays} days`)
 
   try {
     const octokit = github.getOctokit(token || '')
@@ -37,30 +27,40 @@ async function run(): Promise<void> {
     })
 
     // Check current key expiry
-    var response = await fetch(currentKeyURL, {headers: headers})
-    if (!response.ok) {
-      core.setFailed(`Unable to fetch info about key ${currentKeyID}`)
-      return
-    }
-    var data = (await response.json()) as any
-    const keyExpiry = Date.parse(data.expires)
-    const dateDiff = keyExpiry - Date.now()
+    const orgSecretResponse = await secretsClient.getOrgSecret({
+      org: org,
+      secret_name: secretName,
+    })
+    const secretUpdatedAt = orgSecretResponse.data.updated_at
+    const secretLastUpdated = Date.parse(secretUpdatedAt)
+    const keyAgeInMillis = Date.now() - secretLastUpdated
     // If we're not about to expire, log and continue
-    if (dateDiff > rotationLeadTimeInMillis) {
-      core.info(`Key is not about to expire (${data.expires})`)
+    if (keyAgeInMillis < maximumKeyAgeInMillis) {
+      core.info(`Key is not about to expire (last updated ${secretUpdatedAt})`)
       return
     }
 
-    core.info(`Key is about to expire (${data.expires}), creating and uploading a new key.`)
+    core.info(`Key is about to expire (last updated ${secretUpdatedAt}), creating and uploading a new key.`)
 
-    // Reuse capabilities of the existing key
-    const newKeyCapabilities = { capabilities: data.capabilities }
-    response = await fetch(newKeyURL, {headers: headers, method: 'POST', body: JSON.stringify(newKeyCapabilities)})
+    // Actions & Dependabot will always be reusable and ephemeral
+    const newKeyCapabilities = {
+      capabilities: {
+        devices: {
+          create: {
+            reusable: true,
+            ephemeral: true,
+            preauthorized: false,
+            tags: []
+          },
+        },
+      },
+    }
+    const response = await fetch(newKeyURL, {headers: headers, method: 'POST', body: JSON.stringify(newKeyCapabilities)})
     if (!response.ok) {
       core.setFailed(`Unable to create a new Tailscale machine key`)
       return
     }
-    data = (await response.json()) as any
+    const data = (await response.json()) as any
     // Convert the message and key to Uint8Array's (Buffer implements that interface)
     const machineKeyBytes = Buffer.from(data.key)
     core.info(`Generated a new key, ID: ${data.id}`)
@@ -77,7 +77,7 @@ async function run(): Promise<void> {
     // Base64 the encrypted secret
     const encrypted = Buffer.from(encryptedBytes).toString('base64')
 
-    core.info(`Updating ${org} secret ${secretName} to new key`)
+    core.info(`Updating ${org} ${secretType} secret ${secretName} to new key`)
     secretsClient.createOrUpdateOrgSecret({
       org: org,
       secret_name: secretName,
