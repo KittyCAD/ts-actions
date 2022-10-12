@@ -21,6 +21,10 @@ inputs:
     required: false
     default: 7
     description: 'Number of days in advance to rotate a given key'
+  secret-type:
+    required: false
+    default: "actions"
+    description: "Update the machine key for either 'actions' or 'dependabot'"
 runs:
   using: 'node16'
   main: '../dist/update-ts-machine-key/index.js'

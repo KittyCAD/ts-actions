@@ -9,11 +9,13 @@ const re = /tskey-(?:auth-)?(?<keyID>.+)-.*/
 async function run(): Promise<void> {
   const org = github.context.repo.owner
   const token = core.getInput('token')
-  const currentTSMachineKey = core.getInput('current-ts-machine-key')
   const tsAPIKey = core.getInput('ts-api-key')
+  const currentTSMachineKey = core.getInput('current-ts-machine-key')
   const tailnet = core.getInput('tailnet')
   const secretName = core.getInput('org-secret-name')
   const rotationLeadTimeInDays = core.getInput('rotation-lead-time')
+  const secretType = core.getInput('secret-type')
+
   const rotationLeadTimeInMillis = parseInt(rotationLeadTimeInDays) * 24 * 3600 * 1000
   const matches = currentTSMachineKey.match(re)
   if (matches === null) {
@@ -28,6 +30,8 @@ async function run(): Promise<void> {
 
   try {
     const octokit = github.getOctokit(token || '')
+    const secretsClient = (secretType == 'actions') ? octokit.rest.actions : octokit.rest.dependabot
+
     const headers = new Headers({
       'Authorization': 'Basic ' + Buffer.from(tsAPIKey + ":").toString('base64'),
     })
@@ -43,11 +47,11 @@ async function run(): Promise<void> {
     const dateDiff = keyExpiry - Date.now()
     // If we're not about to expire, log and continue
     if (dateDiff > rotationLeadTimeInMillis) {
-      core.info(`Key is not about to expire, expiry: ${data.expires}`)
+      core.info(`Key is not about to expire (${data.expires})`)
       return
     }
 
-    core.info(`Key is about to expire (${keyExpiry}), creating and uploading a new key.`)
+    core.info(`Key is about to expire (${data.expires}), creating and uploading a new key.`)
 
     // Reuse capabilities of the existing key
     const newKeyCapabilities = { capabilities: data.capabilities }
@@ -61,7 +65,7 @@ async function run(): Promise<void> {
     const machineKeyBytes = Buffer.from(data.key)
     core.info(`Generated a new key, ID: ${data.id}`)
 
-    const pubKeyResponse = await octokit.rest.actions.getOrgPublicKey({ org, })
+    const pubKeyResponse = await secretsClient.getOrgPublicKey({ org, })
     const pubKeyID = pubKeyResponse.data.key_id
     const pubKey = Buffer.from(pubKeyResponse.data.key, 'base64')
 
@@ -74,7 +78,7 @@ async function run(): Promise<void> {
     const encrypted = Buffer.from(encryptedBytes).toString('base64')
 
     core.info(`Updating ${org} secret ${secretName} to new key`)
-    octokit.rest.actions.createOrUpdateOrgSecret({
+    secretsClient.createOrUpdateOrgSecret({
       org: org,
       secret_name: secretName,
       key_id: pubKeyID,
