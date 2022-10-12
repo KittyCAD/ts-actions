@@ -4,23 +4,20 @@ author: 'KittyCAD'
 inputs:
   token:
     required: true
-    description: 'Github PAT, needs repo and admin:org scope'
+    description: 'Github PAT, needs admin:org scope'
   ts-api-key:
     required: true
     description: 'API key to generate new machine keys'
-  current-ts-machine-key:
-    required: true
-    description: 'Current TS machine key to check for expiry'
   tailnet:
     required: true
-    description: 'Tailnet to use for checking/generating keys'
+    description: 'Tailnet to use for generating keys'
   org-secret-name:
     required: true
     description: 'Org secret to update'
-  rotation-lead-time:
+  maximum-key-age-in-days:
     required: false
-    default: 7
-    description: 'Number of days in advance to rotate a given key'
+    default: 75
+    description: 'The maximum age of a key before it gets rotated'
   secret-type:
     required: false
     default: "actions"
