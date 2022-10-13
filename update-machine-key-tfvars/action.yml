@@ -1,0 +1,26 @@
+name: 'Update tailscale machine key in tfvars.json'
+description: 'Action to update a tailscale machine key before expiry in a tfvars.json file'
+author: 'KittyCAD'
+inputs:
+  token:
+    required: true
+    description: 'Github PAT, needs admin:org scope'
+  ts-api-key:
+    required: true
+    description: 'API key to generate new machine keys'
+  tailnet:
+    required: true
+    description: 'Tailnet to use for generating keys'
+  tfvars-path:
+    required: true
+    description: 'File path of tfvars.json to update'
+  tfvars-key:
+    required: true
+    description: 'Key in the tfvars.json to update'
+  maximum-key-age-in-days:
+    required: false
+    default: 75
+    description: 'The maximum age of a key before it gets rotated'
+runs:
+  using: 'node16'
+  main: '../dist/update-machine-key-tfvars/index.js'
