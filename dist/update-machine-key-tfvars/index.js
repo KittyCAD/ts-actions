@@ -82,7 +82,8 @@ async function run() {
         const newKeyData = (await newKeyResponse.json());
         core.info(`Generated a new key, ID: ${newKeyData.id}`);
         tfvarsJSON[jsonKey] = newKeyData.key;
-        promises_1.default.writeFile(filePath, JSON.stringify(tfvarsJSON));
+        // Write stringified json back to the input file with pretty printing
+        promises_1.default.writeFile(filePath, JSON.stringify(tfvarsJSON, null, 2));
         core.info(`Stored new key in ${filePath}: ${jsonKey}`);
     }
     catch (e) {

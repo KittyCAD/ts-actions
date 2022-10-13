@@ -62,7 +62,8 @@ async function run(): Promise<void> {
     core.info(`Generated a new key, ID: ${newKeyData.id}`)
 
     tfvarsJSON[jsonKey] = newKeyData.key
-    fsp.writeFile(filePath, JSON.stringify(tfvarsJSON))
+    // Write stringified json back to the input file with pretty printing
+    fsp.writeFile(filePath, JSON.stringify(tfvarsJSON, null, 2))
     core.info(`Stored new key in ${filePath}: ${jsonKey}`)
   } catch (e) {
     core.debug(`error: ${inspect(e)}`)
