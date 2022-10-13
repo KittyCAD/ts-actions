@@ -55,5 +55,5 @@ jobs:
             git config --local user.name "github-actions[bot]"
             git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
             git fetch origin
-            git commit -m "Updating build files in dist/"
+            git commit -m "Updating build files in dist/" || echo "Nothing to commit"
             git push origin ${{github.event.pull_request.head.ref }}
