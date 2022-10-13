@@ -24,4 +24,4 @@ inputs:
     description: "Update the machine key for either 'actions' or 'dependabot'"
 runs:
   using: 'node16'
-  main: '../dist/update-ts-machine-key/index.js'
+  main: '../dist/update-machine-key-github/index.js'
