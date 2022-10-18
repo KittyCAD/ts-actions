@@ -48,6 +48,11 @@ async function main() {
           nodes {
               id
               name
+              assignableUsers(first: 50) {
+                nodes {
+                  login
+                }
+              }
               branchProtectionRules(first: 50) {
                 nodes {
                   requiresApprovingReviews
@@ -82,11 +87,15 @@ async function main() {
     const initialProtectedBranchMessageLength = protectedBranchMessage.length;
     const repos = [];
     repoRulesQuery.organization.repositories.nodes.forEach(repo => {
-        repos.push(repo.name);
+        if (repo.assignableUsers.nodes.length < 7) {
+            repos.push(repo.name);
+        }
         const hasCorrectMergeRules = !repo.mergeCommitAllowed &&
             !repo.rebaseMergeAllowed &&
             repo.squashMergeAllowed;
-        if (!hasCorrectMergeRules && !ignoreRepos.includes(repo.name)) {
+        if (!hasCorrectMergeRules &&
+            !ignoreRepos.includes(repo.name) &&
+            repo.assignableUsers.nodes.length < 7) {
             mergeRuleMessage.push(`- [ ] [${repo.name}](https://github.com/KittyCAD/${repo.name}/settings)`);
         }
         else {
@@ -95,7 +104,9 @@ async function main() {
         const isMainBranchProtected = repo.branchProtectionRules.nodes.some(({ allowsForcePushes, pattern, requiresApprovingReviews }) => {
             return (pattern === 'main' && !allowsForcePushes && !requiresApprovingReviews);
         });
-        if (!isMainBranchProtected && !ignoreRepos.includes(repo.name)) {
+        if (!isMainBranchProtected &&
+            !ignoreRepos.includes(repo.name) &&
+            repo.assignableUsers.nodes.length < 7) {
             protectedBranchMessage.push(`- [ ] [${repo.name}](https://github.com/KittyCAD/${repo.name}/settings/branches)`);
         }
         else {
