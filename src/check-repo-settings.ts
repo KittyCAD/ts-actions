@@ -80,7 +80,7 @@ async function main(): Promise<void> {
       repo.squashMergeAllowed
     if (!hasCorrectMergeRules && !ignoreRepos.includes(repo.name)) {
       mergeRuleMessage.push(
-        `- [ ] [${repo.name}: mergeCommitAllowed: \`${repo.mergeCommitAllowed}\`, rebaseMergeAllowed: \`${repo.rebaseMergeAllowed}\`, squashMergeAllowed: \`${repo.squashMergeAllowed}\`](https://github.com/KittyCAD/${repo.name}/settings)`
+        `- [ ] [${repo.name}](https://github.com/KittyCAD/${repo.name}/settings)`
       )
     } else {
       console.log(`${repo.name} good merge rules`)
