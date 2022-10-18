@@ -83,7 +83,7 @@ async function main() {
     const repos = [];
     repoRulesQuery.organization.repositories.nodes.forEach(repo => {
         const isPrivatePrivateRepo = repo.name.startsWith('_');
-        if (isPrivatePrivateRepo) {
+        if (!isPrivatePrivateRepo) {
             repos.push(repo.name);
         }
         const hasCorrectMergeRules = !repo.mergeCommitAllowed &&
@@ -91,7 +91,7 @@ async function main() {
             repo.squashMergeAllowed;
         if (!hasCorrectMergeRules &&
             !ignoreRepos.includes(repo.name) &&
-            isPrivatePrivateRepo) {
+            !isPrivatePrivateRepo) {
             mergeRuleMessage.push(`- [ ] [${repo.name}](https://github.com/KittyCAD/${repo.name}/settings)`);
         }
         else {
@@ -102,7 +102,7 @@ async function main() {
         });
         if (!isMainBranchProtected &&
             !ignoreRepos.includes(repo.name) &&
-            isPrivatePrivateRepo) {
+            !isPrivatePrivateRepo) {
             protectedBranchMessage.push(`- [ ] [${repo.name}](https://github.com/KittyCAD/${repo.name}/settings/branches)`);
         }
         else {
