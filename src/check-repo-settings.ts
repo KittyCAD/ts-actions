@@ -74,7 +74,7 @@ async function main(): Promise<void> {
   const repos: string[] = []
   repoRulesQuery.organization.repositories.nodes.forEach(repo => {
     const isPrivatePrivateRepo = repo.name.startsWith('_')
-    if (isPrivatePrivateRepo) {
+    if (!isPrivatePrivateRepo) {
       repos.push(repo.name)
     }
     const hasCorrectMergeRules =
@@ -84,7 +84,7 @@ async function main(): Promise<void> {
     if (
       !hasCorrectMergeRules &&
       !ignoreRepos.includes(repo.name) &&
-      isPrivatePrivateRepo
+      !isPrivatePrivateRepo
     ) {
       mergeRuleMessage.push(
         `- [ ] [${repo.name}](https://github.com/KittyCAD/${repo.name}/settings)`
@@ -103,7 +103,7 @@ async function main(): Promise<void> {
     if (
       !isMainBranchProtected &&
       !ignoreRepos.includes(repo.name) &&
-      isPrivatePrivateRepo
+      !isPrivatePrivateRepo
     ) {
       protectedBranchMessage.push(
         `- [ ] [${repo.name}](https://github.com/KittyCAD/${repo.name}/settings/branches)`
