@@ -9,7 +9,7 @@ on:
       - check-repo-settings/action.yml
 
 jobs:
-  weekly-contributions-test:
+  check-repo-settings-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -23,5 +23,5 @@ jobs:
       - name: comment markdown
         env:
           PRNUM: ${{ github.event.pull_request.number }}
-          BODY: '${{ steps.weekly-contributions.outputs.body }}'
+          BODY: '${{ steps.check-repo-settings.outputs.body }}'
         run: gh pr comment $PRNUM --body "$BODY"
