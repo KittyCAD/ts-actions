@@ -1,4 +1,4 @@
-name: 'get markdowns repo settings issues'
+name: 'get markdowns repo settings'
 
 on:
   pull_request:

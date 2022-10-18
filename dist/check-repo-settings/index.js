@@ -152,7 +152,7 @@ async function main() {
     const isProblems = mergeRuleMessageSection ||
         protectedBranchMessageSection ||
         dependabotBulletMessageSection;
-    core.setOutput('isproblems', isProblems);
+    core.setOutput('isproblems', !!isProblems);
     core.setOutput('body', issueBody);
 }
 main();

@@ -164,7 +164,7 @@ async function main(): Promise<void> {
     mergeRuleMessageSection ||
     protectedBranchMessageSection ||
     dependabotBulletMessageSection
-  core.setOutput('isproblems', isProblems)
+  core.setOutput('isproblems', !!isProblems)
   core.setOutput('body', issueBody)
 }
 
