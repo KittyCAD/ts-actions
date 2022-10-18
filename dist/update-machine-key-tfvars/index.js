@@ -44,7 +44,7 @@ async function run() {
     const maximumKeyAgeInMillis = parseInt(maximumKeyAgeInDays) * 24 * 3600 * 1000;
     const newKeyURL = `https://api.tailscale.com/api/v2/tailnet/${tailnet}/keys`;
     const headers = new node_fetch_1.Headers({
-        'Authorization': 'Basic ' + Buffer.from(tsAPIKey + ":").toString('base64'),
+        Authorization: 'Basic ' + Buffer.from(tsAPIKey + ':').toString('base64')
     });
     core.info(`Attempting to rotate any key older than ${maximumKeyAgeInDays} days`);
     try {
@@ -74,7 +74,11 @@ async function run() {
         core.info(`Key is about to expire (last updated ${keyCreatedAt}), creating and uploading a new key.`);
         // Reuse the existing keys capabilities
         const newKeyCapabilities = { capabilities: currentKeyData.capabilities };
-        const newKeyResponse = await (0, node_fetch_1.default)(newKeyURL, { headers: headers, method: 'POST', body: JSON.stringify(newKeyCapabilities) });
+        const newKeyResponse = await (0, node_fetch_1.default)(newKeyURL, {
+            headers: headers,
+            method: 'POST',
+            body: JSON.stringify(newKeyCapabilities)
+        });
         if (!newKeyResponse.ok) {
             core.setFailed(`Unable to create a new Tailscale machine key`);
             return;
