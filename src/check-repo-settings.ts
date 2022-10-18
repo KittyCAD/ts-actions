@@ -2,10 +2,9 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {inspect} from 'util'
 
-const ignoreRepos = ['jordansPersonalLitterbox']
-
 async function main(): Promise<void> {
   const token = core.getInput('github-token')
+  const ignoreRepos = JSON.parse(core.getInput('ignore-repos') || '[]')
   //   const token = process.env.GITHUB_TOKEN
   const octokit = github.getOctokit(token)
 

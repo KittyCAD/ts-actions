@@ -5,6 +5,9 @@ inputs:
   github-token:
     required: true
     description: github token
+  ignore-repos:
+    required: false
+    description: repos to ignore
 outputs:
   body:
     description: Output summary

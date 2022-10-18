@@ -17,6 +17,10 @@ jobs:
         id: check-repo-settings
         with:
           github-token: ${{ secrets.GLOBAL_PAT }}
+          ignore-repos: |
+            [
+              "jordansPersonalLitterbox"
+            ]
       - name: setup gh cli
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token

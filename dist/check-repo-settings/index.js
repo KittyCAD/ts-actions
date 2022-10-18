@@ -36,9 +36,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
-const ignoreRepos = ['jordansPersonalLitterbox'];
 async function main() {
     const token = core.getInput('github-token');
+    const ignoreRepos = JSON.parse(core.getInput('ignore-repos') || '[]');
     //   const token = process.env.GITHUB_TOKEN
     const octokit = github.getOctokit(token);
     const repoRulesQuery = await octokit.graphql(`
