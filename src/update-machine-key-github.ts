@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import fetch, {Headers} from 'node-fetch';
+import fetch, {Headers} from 'node-fetch'
 import libsodium from 'libsodium-wrappers'
 import {inspect} from 'util'
 
@@ -16,20 +16,23 @@ async function run(): Promise<void> {
   const maximumKeyAgeInMillis = parseInt(maximumKeyAgeInDays) * 24 * 3600 * 1000
   const newKeyURL = `https://api.tailscale.com/api/v2/tailnet/${tailnet}/keys`
 
-  core.info(`Attempting to rotate any key older than ${maximumKeyAgeInDays} days`)
+  core.info(
+    `Attempting to rotate any key older than ${maximumKeyAgeInDays} days`
+  )
 
   try {
     const octokit = github.getOctokit(token || '')
-    const secretsClient = (secretType == 'actions') ? octokit.rest.actions : octokit.rest.dependabot
+    const secretsClient =
+      secretType == 'actions' ? octokit.rest.actions : octokit.rest.dependabot
 
     const headers = new Headers({
-      'Authorization': 'Basic ' + Buffer.from(tsAPIKey + ":").toString('base64'),
+      Authorization: 'Basic ' + Buffer.from(tsAPIKey + ':').toString('base64')
     })
 
     // Check current key expiry
     const orgSecretResponse = await secretsClient.getOrgSecret({
       org: org,
-      secret_name: secretName,
+      secret_name: secretName
     })
     const secretUpdatedAt = orgSecretResponse.data.updated_at
     const secretLastUpdated = Date.parse(secretUpdatedAt)
@@ -40,7 +43,9 @@ async function run(): Promise<void> {
       return
     }
 
-    core.info(`Key is about to expire (last updated ${secretUpdatedAt}), creating and uploading a new key.`)
+    core.info(
+      `Key is about to expire (last updated ${secretUpdatedAt}), creating and uploading a new key.`
+    )
 
     // Actions & Dependabot will always be reusable and ephemeral
     const newKeyCapabilities = {
@@ -51,11 +56,15 @@ async function run(): Promise<void> {
             ephemeral: true,
             preauthorized: false,
             tags: []
-          },
-        },
-      },
+          }
+        }
+      }
     }
-    const response = await fetch(newKeyURL, {headers: headers, method: 'POST', body: JSON.stringify(newKeyCapabilities)})
+    const response = await fetch(newKeyURL, {
+      headers: headers,
+      method: 'POST',
+      body: JSON.stringify(newKeyCapabilities)
+    })
     if (!response.ok) {
       core.setFailed(`Unable to create a new Tailscale machine key`)
       return
@@ -65,7 +74,7 @@ async function run(): Promise<void> {
     const machineKeyBytes = Buffer.from(data.key)
     core.info(`Generated a new key, ID: ${data.id}`)
 
-    const pubKeyResponse = await secretsClient.getOrgPublicKey({ org, })
+    const pubKeyResponse = await secretsClient.getOrgPublicKey({org})
     const pubKeyID = pubKeyResponse.data.key_id
     const pubKey = Buffer.from(pubKeyResponse.data.key, 'base64')
 
@@ -83,7 +92,7 @@ async function run(): Promise<void> {
       secret_name: secretName,
       key_id: pubKeyID,
       encrypted_value: encrypted,
-      visibility: 'private',
+      visibility: 'private'
     })
   } catch (e) {
     core.debug(`error: ${inspect(e)}`)
