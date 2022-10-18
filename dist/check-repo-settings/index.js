@@ -87,7 +87,9 @@ async function main() {
     const initialProtectedBranchMessageLength = protectedBranchMessage.length;
     const repos = [];
     repoRulesQuery.organization.repositories.nodes.forEach(repo => {
-        if (repo.assignableUsers.nodes.length < 7) {
+        const isNotExecOnlyRepo = !!repo.assignableUsers.nodes.find(({ login }) => login.toLocaleLowerCase() === 'irev-dev' // is not a exec only repo
+        );
+        if (isNotExecOnlyRepo) {
             repos.push(repo.name);
         }
         const hasCorrectMergeRules = !repo.mergeCommitAllowed &&
@@ -95,7 +97,7 @@ async function main() {
             repo.squashMergeAllowed;
         if (!hasCorrectMergeRules &&
             !ignoreRepos.includes(repo.name) &&
-            repo.assignableUsers.nodes.length < 7) {
+            isNotExecOnlyRepo) {
             mergeRuleMessage.push(`- [ ] [${repo.name}](https://github.com/KittyCAD/${repo.name}/settings)`);
         }
         else {
@@ -106,7 +108,7 @@ async function main() {
         });
         if (!isMainBranchProtected &&
             !ignoreRepos.includes(repo.name) &&
-            repo.assignableUsers.nodes.length < 7) {
+            isNotExecOnlyRepo) {
             protectedBranchMessage.push(`- [ ] [${repo.name}](https://github.com/KittyCAD/${repo.name}/settings/branches)`);
         }
         else {

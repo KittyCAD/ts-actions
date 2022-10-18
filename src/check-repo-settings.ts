@@ -17,7 +17,7 @@ async function main(): Promise<void> {
           name: string
           assignableUsers: {
             nodes: {
-              loign: string
+              login: string
             }[]
           }
           branchProtectionRules: {
@@ -83,7 +83,10 @@ async function main(): Promise<void> {
   const initialProtectedBranchMessageLength = protectedBranchMessage.length
   const repos: string[] = []
   repoRulesQuery.organization.repositories.nodes.forEach(repo => {
-    if (repo.assignableUsers.nodes.length < 7) {
+    const isNotExecOnlyRepo = !!repo.assignableUsers.nodes.find(
+      ({login}) => login.toLocaleLowerCase() === 'irev-dev' // is not a exec only repo
+    )
+    if (isNotExecOnlyRepo) {
       repos.push(repo.name)
     }
     const hasCorrectMergeRules =
@@ -93,7 +96,7 @@ async function main(): Promise<void> {
     if (
       !hasCorrectMergeRules &&
       !ignoreRepos.includes(repo.name) &&
-      repo.assignableUsers.nodes.length < 7
+      isNotExecOnlyRepo
     ) {
       mergeRuleMessage.push(
         `- [ ] [${repo.name}](https://github.com/KittyCAD/${repo.name}/settings)`
@@ -112,7 +115,7 @@ async function main(): Promise<void> {
     if (
       !isMainBranchProtected &&
       !ignoreRepos.includes(repo.name) &&
-      repo.assignableUsers.nodes.length < 7
+      isNotExecOnlyRepo
     ) {
       protectedBranchMessage.push(
         `- [ ] [${repo.name}](https://github.com/KittyCAD/${repo.name}/settings/branches)`
