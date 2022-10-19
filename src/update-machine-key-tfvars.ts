@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import fetch, {Headers} from 'node-fetch';
+import fetch, {Headers} from 'node-fetch'
 import fsp from 'node:fs/promises'
 import {inspect} from 'util'
 
@@ -17,10 +17,12 @@ async function run(): Promise<void> {
   const maximumKeyAgeInMillis = parseInt(maximumKeyAgeInDays) * 24 * 3600 * 1000
   const newKeyURL = `https://api.tailscale.com/api/v2/tailnet/${tailnet}/keys`
   const headers = new Headers({
-    'Authorization': 'Basic ' + Buffer.from(tsAPIKey + ":").toString('base64'),
+    Authorization: 'Basic ' + Buffer.from(tsAPIKey + ':').toString('base64')
   })
 
-  core.info(`Attempting to rotate any key older than ${maximumKeyAgeInDays} days`)
+  core.info(
+    `Attempting to rotate any key older than ${maximumKeyAgeInDays} days`
+  )
 
   try {
     const tfvarsContents = await fsp.readFile(filePath, 'utf8')
@@ -49,11 +51,17 @@ async function run(): Promise<void> {
       return
     }
 
-    core.info(`Key is about to expire (last updated ${keyCreatedAt}), creating and uploading a new key.`)
+    core.info(
+      `Key is about to expire (last updated ${keyCreatedAt}), creating and uploading a new key.`
+    )
 
     // Reuse the existing keys capabilities
-    const newKeyCapabilities = { capabilities: currentKeyData.capabilities }
-    const newKeyResponse = await fetch(newKeyURL, {headers: headers, method: 'POST', body: JSON.stringify(newKeyCapabilities)})
+    const newKeyCapabilities = {capabilities: currentKeyData.capabilities}
+    const newKeyResponse = await fetch(newKeyURL, {
+      headers: headers,
+      method: 'POST',
+      body: JSON.stringify(newKeyCapabilities)
+    })
     if (!newKeyResponse.ok) {
       core.setFailed(`Unable to create a new Tailscale machine key`)
       return

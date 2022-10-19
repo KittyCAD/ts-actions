@@ -35,7 +35,7 @@
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
       "@typescript-eslint/no-useless-constructor": "error",
       "@typescript-eslint/no-var-requires": "error",
-      "@typescript-eslint/prefer-for-of": "warn",
+      "@typescript-eslint/prefer-for-of": "off",
       "@typescript-eslint/prefer-function-type": "warn",
       "@typescript-eslint/prefer-includes": "error",
       "@typescript-eslint/prefer-string-starts-ends-with": "error",
@@ -46,7 +46,7 @@
       "@typescript-eslint/semi": ["error", "never"],
       "@typescript-eslint/type-annotation-spacing": "error",
       "@typescript-eslint/unbound-method": "error",
-      "github/array-foreach": "warn",
+      "github/array-foreach": "off",
       "no-console": "warn"
     },
     "env": {

@@ -455,7 +455,7 @@ async function main() {
 
 main()
 
-function loginToName(login: string) {
+function loginToName(login: string): string {
   const loginToNameMap: {[key: string]: string} = {
     'Irev-Dev': 'Kurt',
     brwhale: 'Garrett',

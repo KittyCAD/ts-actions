@@ -55,14 +55,14 @@ async function run() {
     core.info(`Attempting to rotate any key older than ${maximumKeyAgeInDays} days`);
     try {
         const octokit = github.getOctokit(token || '');
-        const secretsClient = (secretType == 'actions') ? octokit.rest.actions : octokit.rest.dependabot;
+        const secretsClient = secretType == 'actions' ? octokit.rest.actions : octokit.rest.dependabot;
         const headers = new node_fetch_1.Headers({
-            'Authorization': 'Basic ' + Buffer.from(tsAPIKey + ":").toString('base64'),
+            Authorization: 'Basic ' + Buffer.from(tsAPIKey + ':').toString('base64')
         });
         // Check current key expiry
         const orgSecretResponse = await secretsClient.getOrgSecret({
             org: org,
-            secret_name: secretName,
+            secret_name: secretName
         });
         const secretUpdatedAt = orgSecretResponse.data.updated_at;
         const secretLastUpdated = Date.parse(secretUpdatedAt);
@@ -82,11 +82,15 @@ async function run() {
                         ephemeral: true,
                         preauthorized: false,
                         tags: []
-                    },
-                },
-            },
+                    }
+                }
+            }
         };
-        const response = await (0, node_fetch_1.default)(newKeyURL, { headers: headers, method: 'POST', body: JSON.stringify(newKeyCapabilities) });
+        const response = await (0, node_fetch_1.default)(newKeyURL, {
+            headers: headers,
+            method: 'POST',
+            body: JSON.stringify(newKeyCapabilities)
+        });
         if (!response.ok) {
             core.setFailed(`Unable to create a new Tailscale machine key`);
             return;
@@ -95,7 +99,7 @@ async function run() {
         // Convert the message and key to Uint8Array's (Buffer implements that interface)
         const machineKeyBytes = Buffer.from(data.key);
         core.info(`Generated a new key, ID: ${data.id}`);
-        const pubKeyResponse = await secretsClient.getOrgPublicKey({ org, });
+        const pubKeyResponse = await secretsClient.getOrgPublicKey({ org });
         const pubKeyID = pubKeyResponse.data.key_id;
         const pubKey = Buffer.from(pubKeyResponse.data.key, 'base64');
         // Encrypt using LibSodium
@@ -110,7 +114,7 @@ async function run() {
             secret_name: secretName,
             key_id: pubKeyID,
             encrypted_value: encrypted,
-            visibility: 'private',
+            visibility: 'private'
         });
     }
     catch (e) {

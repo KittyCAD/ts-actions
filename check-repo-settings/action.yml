@@ -1,0 +1,18 @@
+name: 'Generate a report on which repos differ from settings we want across all repos'
+description: Looks at all KittyCAD repos to find issues with settings
+author: 'KittyCAD'
+inputs:
+  github-token:
+    required: true
+    description: github token
+  ignore-repos:
+    required: false
+    description: repos to ignore
+outputs:
+  body:
+    description: Output summary
+  isproblems:
+    description: if the action found any issues with our repos
+runs:
+  using: 'node16'
+  main: '../dist/check-repo-settings/index.js'
