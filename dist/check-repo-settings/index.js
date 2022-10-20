@@ -108,6 +108,7 @@ async function main() {
                 mergeRuleInfo.fixedList.push(`- [${repo.name}](https://github.com/KittyCAD/${repo.name})`);
             }
             catch (error) {
+                console.error(error);
                 mergeRuleInfo.errorList.push(`- [${repo.name}](https://github.com/KittyCAD/${repo.name})`);
             }
         }
@@ -187,6 +188,7 @@ async function main() {
                 protectedBranchInfo.fixedList.push(`- [${repo.name}](https://github.com/KittyCAD/${repo.name})`);
             }
             catch (error) {
+                console.error(error);
                 protectedBranchInfo.errorList.push(`- [${repo.name}](https://github.com/KittyCAD/${repo.name})`);
             }
         }
