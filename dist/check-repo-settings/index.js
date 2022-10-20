@@ -166,8 +166,11 @@ async function main() {
             console.log(settingsData);
         }
         catch (error) {
+            console.log('setting isMainBranchProtected false on catch');
+            console.log(error);
             isMainBranchProtected = false;
         }
+        console.log('isMainBranchProtected', isMainBranchProtected, repo.name);
         if (!canFetchSettings) {
             protectedBranchInfo.showMessage = true;
             protectedBranchInfo.errorList.push(`- [${repo.name}](https://github.com/KittyCAD/${repo.name})`);
