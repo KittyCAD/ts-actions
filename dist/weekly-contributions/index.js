@@ -56,7 +56,9 @@ async function main() {
       }
     }
       `);
-    const repos = reposResponse.organization.repositories.nodes.map(({ name }) => name);
+    const repos = reposResponse.organization.repositories.nodes
+        .map(({ name }) => name)
+        .filter(name => !name.startsWith('_'));
     const prsResponse = await octokit.graphql(`
       query{
         ${repos.map(makeInnerPRQuery).join('\n')}
