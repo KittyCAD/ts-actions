@@ -128,12 +128,12 @@ async function main(): Promise<void> {
           owner: 'KittyCAD',
           branch: 'main'
         })
-        isMainBranchProtected =
-          !!data.required_pull_request_reviews &&
-          !!data.required_pull_request_reviews
-            .required_approving_review_count &&
-          data.required_pull_request_reviews.required_approving_review_count >=
-            0
+        isMainBranchProtected = !!data.required_pull_request_reviews
+        // &&
+        // !!data.required_pull_request_reviews
+        //   .required_approving_review_count &&
+        // data.required_pull_request_reviews.required_approving_review_count >=
+        //   0
         console.log(
           `Is ${repo.name} main branch protected? ${isMainBranchProtected}`
         )
