@@ -163,6 +163,7 @@ async function main() {
                 }
                 : null;
             settingsData.required_status_checks = requiredStatusChecks;
+            console.log(settingsData);
         }
         catch (error) {
             isMainBranchProtected = false;
