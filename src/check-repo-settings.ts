@@ -155,10 +155,11 @@ async function main(): Promise<void> {
             : null
         const statusChecksStrict = data.required_status_checks?.strict
         const statusChecksContexts = data.required_status_checks?.contexts || []
-        const statusChecks = data.required_status_checks?.checks.map(check => ({
-          context: check.context,
-          app_id: check.app_id
-        }))
+        const statusChecks =
+          data.required_status_checks?.checks.map(check => ({
+            context: check.context,
+            app_id: check.app_id
+          })) || []
         const requiredStatusChecks = data.required_status_checks
           ? {
               strict: statusChecksStrict,

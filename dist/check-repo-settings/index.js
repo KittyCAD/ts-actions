@@ -154,7 +154,7 @@ async function main() {
             const statusChecks = data.required_status_checks?.checks.map(check => ({
                 context: check.context,
                 app_id: check.app_id
-            }));
+            })) || [];
             const requiredStatusChecks = data.required_status_checks
                 ? {
                     strict: statusChecksStrict,

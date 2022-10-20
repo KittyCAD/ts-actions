@@ -20,7 +20,9 @@ jobs:
           github-token: ${{ secrets.GLOBAL_PAT }}
           ignore-repos: |
             [
-              "jordansPersonalLitterbox"
+              "jordansPersonalLitterbox",
+              "community",
+              "OldKittyCADApp"
             ]
       - name: setup gh cli
         run: |
