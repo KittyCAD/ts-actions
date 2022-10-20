@@ -129,15 +129,9 @@ async function main(): Promise<void> {
           branch: 'main'
         })
         isMainBranchProtected = !!data.required_pull_request_reviews
-        // &&
-        // !!data.required_pull_request_reviews
-        //   .required_approving_review_count &&
-        // data.required_pull_request_reviews.required_approving_review_count >=
-        //   0
         console.log(
           `Is ${repo.name} main branch protected? ${isMainBranchProtected}`
         )
-        console.log(JSON.stringify(data.required_pull_request_reviews, null, 2))
         canFetchSettings = true
         settingsData = data
         const userRestrictions = data.restrictions?.users
@@ -172,14 +166,11 @@ async function main(): Promise<void> {
             }
           : null
         settingsData.required_status_checks = requiredStatusChecks
-        console.log(settingsData)
       } catch (error) {
-        console.log('setting isMainBranchProtected false on catch')
         console.log(error)
         isMainBranchProtected = false
       }
 
-      console.log('isMainBranchProtected', isMainBranchProtected, repo.name)
       if (!canFetchSettings) {
         protectedBranchInfo.showMessage = true
         protectedBranchInfo.errorList.push(
