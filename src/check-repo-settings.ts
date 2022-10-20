@@ -154,7 +154,7 @@ async function main(): Promise<void> {
               }
             : null
         const statusChecksStrict = data.required_status_checks?.strict
-        const statusChecksContexts = data.required_status_checks?.contexts
+        const statusChecksContexts = data.required_status_checks?.contexts || []
         const statusChecks = data.required_status_checks?.checks.map(check => ({
           context: check.context,
           app_id: check.app_id
@@ -283,6 +283,7 @@ async function main(): Promise<void> {
 
   core.setOutput('isproblems', !!isProblems)
   core.setOutput('body', issueBody)
+  console.log(issueBody)
 }
 
 main()

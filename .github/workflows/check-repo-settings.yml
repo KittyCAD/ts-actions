@@ -2,12 +2,12 @@ name: 'get markdowns repo settings'
 
 on:
   workflow_dispatch:
-#   pull_request:
-#     paths:
-#       - src/check-repo-settings.ts
-#       - dist/check-repo-settings/**.js
-#       - .github/workflows/check-repo-settings.yml
-#       - check-repo-settings/action.yml    
+  pull_request:
+    paths:
+      - src/check-repo-settings.ts
+      - dist/check-repo-settings/**.js
+      - .github/workflows/check-repo-settings.yml
+      - check-repo-settings/action.yml    
 
 jobs:
   check-repo-settings-test:
