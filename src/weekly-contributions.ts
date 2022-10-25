@@ -254,7 +254,11 @@ async function main() {
         repository,
         number
       }) => {
-        if (author.login === 'sync-by-unito') return
+        if (
+          author.login === 'sync-by-unito' ||
+          author.login === 'github-actions'
+        )
+          return
         const issueInfo = {
           repo: repository.name,
           url,

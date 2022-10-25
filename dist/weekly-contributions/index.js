@@ -139,7 +139,8 @@ async function main() {
     const IssueToGetCommentsOn = {};
     Object.values(issuesResponse).forEach(pullRequest => {
         pullRequest.issues.nodes.forEach(({ title, url, author, createdAt, updatedAt, assignees, state, closedAt, repository, number }) => {
-            if (author.login === 'sync-by-unito')
+            if (author.login === 'sync-by-unito' ||
+                author.login === 'github-actions')
                 return;
             const issueInfo = {
                 repo: repository.name,
