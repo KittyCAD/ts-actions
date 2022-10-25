@@ -254,7 +254,11 @@ async function main() {
         repository,
         number
       }) => {
-        if (author.login === 'sync-by-unito') return
+        if (
+          author.login === 'sync-by-unito' ||
+          author.login === 'github-actions'
+        )
+          return
         const issueInfo = {
           repo: repository.name,
           url,
@@ -437,7 +441,7 @@ async function main() {
   const orderedContributors = Object.entries(prGroupedByAuthor).sort(
     ([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1)
   )
-  const devs = ['brwhale', 'iterion', 'Irev-Dev', 'hanbollar', 'jessfraz']
+  const devs = ['jgomez720', 'iterion', 'Irev-Dev', 'hanbollar', 'jessfraz']
   const devContributors = orderedContributors.filter(([login]) =>
     devs.includes(login)
   )
@@ -458,11 +462,11 @@ main()
 function loginToName(login: string): string {
   const loginToNameMap: {[key: string]: string} = {
     'Irev-Dev': 'Kurt',
-    brwhale: 'Garrett',
     hanbollar: 'Hannah',
     iterion: 'Adam',
     JBEmbedded: 'JB',
     jessfraz: 'Jess',
+    jgomez720: 'Josh',
     JordanNoone: 'Jordan',
     mansoorsiddiqui: 'Mansoor',
     vonniwilliams: 'Vonni'
