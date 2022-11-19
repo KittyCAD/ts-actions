@@ -14,4 +14,4 @@ inputs:
   
 runs:
   using: 'node16'
-  main: '../dist/check-repo-settings/index.js'
+  main: '../dist/check-all-issues/index.js'
