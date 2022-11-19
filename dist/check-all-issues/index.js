@@ -163,11 +163,13 @@ async function getValueFromDotEnvOrGithub(name) {
             .trim()
             .replaceAll("'", '')
             .replaceAll('"', '');
+        console.log(`Reading ${name} from .env, got ${value}`);
         return value;
     }
     catch (error) {
         const value = core.getInput(name);
         // read failed assume we're running in an action
+        console.log(`Reading ${name} from github action input got ${value}`);
         return value;
     }
 }
