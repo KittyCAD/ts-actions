@@ -44,7 +44,12 @@ main();
 async function main() {
     console.log('kitting off');
     core.info('kitting off');
-    const [token, backLogProjectNumberStr, org] = await Promise.all(['GH_TOKEN', 'PROJECT_NUMBER', 'GH_ORG'].map(getValueFromDotEnvOrGithub));
+    const token = core.getInput('gh-token');
+    const backLogProjectNumberStr = core.getInput('project-number');
+    const org = core.getInput('gh-org');
+    // const [token, backLogProjectNumberStr, org] = await Promise.all(
+    //   ['GH_TOKEN', 'PROJECT_NUMBER', 'GH_ORG'].map(getValueFromDotEnvOrGithub)
+    // )
     const backLogProjectNumber = JSON.parse(backLogProjectNumberStr);
     const octoGraph = github.getOctokit(token).graphql;
     const [{ projectId, fieldId, singleSelectOptionIdTodo, singleSelectOptionIdDone }, repos] = await Promise.all([
