@@ -1,1 +1,17 @@
-# placeholder, done think this needs to be used outside of this repo
+name: 'check all our issues are in the correct project'
+description: check all our issues are in the correct project
+author: 'KittyCAD'
+inputs:
+  GH_TOKEN:
+    required: true
+    description: github token
+  PROJECT_NUMBER:
+    required: false
+    description: back log project number
+  GH_ORG:
+    required: true
+    description: org name
+  
+runs:
+  using: 'node16'
+  main: '../dist/check-repo-settings/index.js'
