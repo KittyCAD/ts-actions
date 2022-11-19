@@ -1,0 +1,17 @@
+name: 'check all our issues are in the correct project'
+description: check all our issues are in the correct project
+author: 'KittyCAD'
+inputs:
+  gh-token:
+    required: true
+    description: github token
+  project-number:
+    required: false
+    description: back log project number
+  gh-org:
+    required: true
+    description: org name
+  
+runs:
+  using: 'node16'
+  main: '../dist/check-repo-settings/index.js'
