@@ -2,13 +2,13 @@ name: 'check all our issues are in the correct project'
 description: check all our issues are in the correct project
 author: 'KittyCAD'
 inputs:
-  GH_TOKEN:
+  gh-token:
     required: true
     description: github token
-  PROJECT_NUMBER:
+  project-number:
     required: false
     description: back log project number
-  GH_ORG:
+  gh-org:
     required: true
     description: org name
   

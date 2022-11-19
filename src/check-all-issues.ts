@@ -5,6 +5,8 @@ import fsp from 'fs/promises'
 main()
 
 async function main() {
+  console.log('kitting off')
+  core.info('kitting off')
   const [token, backLogProjectNumberStr, org] = await Promise.all(
     ['GH_TOKEN', 'PROJECT_NUMBER', 'GH_ORG'].map(getValueFromDotEnvOrGithub)
   )
@@ -211,9 +213,10 @@ async function getValueFromDotEnvOrGithub(name: string): Promise<string> {
     console.log(`Reading ${name} from .env, got ${value}`)
     return value
   } catch (error) {
-    const value = core.getInput(name)
+    const newName = name.toLocaleLowerCase().replaceAll(/_/g, '-')
+    const value = core.getInput(newName)
     // read failed assume we're running in an action
-    console.log(`Reading ${name} from github action input got ${value}`)
+    console.log(`Reading ${newName} from github action input got ${value}`)
     return value
   }
 }

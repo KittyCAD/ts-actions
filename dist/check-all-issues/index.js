@@ -42,6 +42,8 @@ const github = __importStar(__nccwpck_require__(5438));
 const promises_1 = __importDefault(__nccwpck_require__(9225));
 main();
 async function main() {
+    console.log('kitting off');
+    core.info('kitting off');
     const [token, backLogProjectNumberStr, org] = await Promise.all(['GH_TOKEN', 'PROJECT_NUMBER', 'GH_ORG'].map(getValueFromDotEnvOrGithub));
     const backLogProjectNumber = JSON.parse(backLogProjectNumberStr);
     const octoGraph = github.getOctokit(token).graphql;
@@ -167,9 +169,10 @@ async function getValueFromDotEnvOrGithub(name) {
         return value;
     }
     catch (error) {
-        const value = core.getInput(name);
+        const newName = name.toLocaleLowerCase().replaceAll(/_/g, '-');
+        const value = core.getInput(newName);
         // read failed assume we're running in an action
-        console.log(`Reading ${name} from github action input got ${value}`);
+        console.log(`Reading ${newName} from github action input got ${value}`);
         return value;
     }
 }
