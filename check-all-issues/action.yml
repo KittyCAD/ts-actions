@@ -6,7 +6,7 @@ inputs:
     required: true
     description: github token
   project-number:
-    required: false
+    required: true
     description: back log project number
   gh-org:
     required: true
