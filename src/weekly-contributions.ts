@@ -446,7 +446,7 @@ async function main() {
     devs.includes(login)
   )
   const nonDevContributors = orderedContributors.filter(
-    ([login]) => !devs.includes(login)
+    ([login]) => !devs.includes(login) && login !== 'org-projects-app'
   )
 
   devContributors.forEach(processAuthorGroups(true))
