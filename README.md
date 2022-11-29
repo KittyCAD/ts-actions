@@ -19,6 +19,7 @@ Build the typescript and package it for distribution
 ```bash
 $ npm run build && npm run package
 ```
+You might need `export NODE_OPTIONS=--openssl-legacy-provider` if you are using node v18.
 
 before you push make sure you also commit the generated changes in `dist` and `lib`
 
