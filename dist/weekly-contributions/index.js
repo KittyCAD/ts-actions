@@ -278,7 +278,7 @@ async function main() {
     const orderedContributors = Object.entries(prGroupedByAuthor).sort(([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1));
     const devs = ['jgomez720', 'iterion', 'Irev-Dev', 'hanbollar', 'jessfraz'];
     const devContributors = orderedContributors.filter(([login]) => devs.includes(login));
-    const nonDevContributors = orderedContributors.filter(([login]) => !devs.includes(login));
+    const nonDevContributors = orderedContributors.filter(([login]) => !devs.includes(login) && (login !== 'org-projects-app'));
     devContributors.forEach(processAuthorGroups(true));
     markdownOutput += `\n\n<br/>\n\n -- **Other Contributors** --`;
     nonDevContributors.forEach(processAuthorGroups());
