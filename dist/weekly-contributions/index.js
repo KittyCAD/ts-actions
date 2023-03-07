@@ -37,12 +37,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const util_1 = __nccwpck_require__(1669);
-const loginToNameMap = {};
+let loginToNameMap = {};
 async function main() {
     const token = core.getInput('github-token');
     const dateStr = core.getInput('date');
     const markdownPrefix = core.getInput('markdown-prefix') || '';
-    const loginToNameMap = core.getInput('login-to-name-map') || '';
+    loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {};
     const octokit = github.getOctokit(token);
     const date = dateStr ? new Date(dateStr) : new Date();
     const cutOffDate = new Date(date);
