@@ -97,3 +97,8 @@ Thumbs.db
 # Ignore built ts files
 __tests__/runner/*
 lib/**/*
+
+# ignore swap files
+*.swa
+*.swo
+*.swp
