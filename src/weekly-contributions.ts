@@ -5,13 +5,13 @@ import {inspect} from 'util'
 type IssueStates = 'OPEN' | 'CLOSED'
 type PRStates = IssueStates | 'MERGED'
 
-const loginToNameMap: {[key: string]: string} = {}
+let loginToNameMap: {[key: string]: string} = {}
 
 async function main() {
   const token = core.getInput('github-token')
   const dateStr = core.getInput('date')
   const markdownPrefix = core.getInput('markdown-prefix') || ''
-  const loginToNameMap = core.getInput('login-to-name-map') || ''
+  loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {}
   const octokit = github.getOctokit(token)
 
   const date = dateStr ? new Date(dateStr) : new Date()
