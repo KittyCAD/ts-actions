@@ -18,6 +18,18 @@ jobs:
         with:
           github-token: ${{ secrets.GLOBAL_PAT }}
           markdown-prefix: "_test prefix_ `code 🤷`"
+          login-to-name-map: |
+              {
+                "Irev-Dev": "Kurt",
+                "hanbollar": "Hannah",
+                "iterion": "Adam",
+                "JBEmbedded": "JB",
+                "jessfraz": "Jess",
+                "jgomez720": "Josh",
+                "JordanNoone": "Jordan",
+                "mansoorsiddiqui": "Mansoor",
+                "vonniwilliams": "Vonni"
+              }
       - name: setup gh cli
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token

@@ -37,10 +37,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const util_1 = __nccwpck_require__(1669);
+let loginToNameMap = {};
 async function main() {
     const token = core.getInput('github-token');
     const dateStr = core.getInput('date');
     const markdownPrefix = core.getInput('markdown-prefix') || '';
+    loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {};
     const octokit = github.getOctokit(token);
     const date = dateStr ? new Date(dateStr) : new Date();
     const cutOffDate = new Date(date);
@@ -278,7 +280,7 @@ async function main() {
     const orderedContributors = Object.entries(prGroupedByAuthor).sort(([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1));
     const devs = ['jgomez720', 'iterion', 'Irev-Dev', 'hanbollar', 'jessfraz'];
     const devContributors = orderedContributors.filter(([login]) => devs.includes(login));
-    const nonDevContributors = orderedContributors.filter(([login]) => !devs.includes(login));
+    const nonDevContributors = orderedContributors.filter(([login]) => !devs.includes(login) && login !== 'org-projects-app');
     devContributors.forEach(processAuthorGroups(true));
     markdownOutput += `\n\n<br/>\n\n -- **Other Contributors** --`;
     nonDevContributors.forEach(processAuthorGroups());
@@ -287,17 +289,6 @@ async function main() {
 }
 main();
 function loginToName(login) {
-    const loginToNameMap = {
-        'Irev-Dev': 'Kurt',
-        hanbollar: 'Hannah',
-        iterion: 'Adam',
-        JBEmbedded: 'JB',
-        jessfraz: 'Jess',
-        jgomez720: 'Josh',
-        JordanNoone: 'Jordan',
-        mansoorsiddiqui: 'Mansoor',
-        vonniwilliams: 'Vonni'
-    };
     return loginToNameMap[login] || login;
 }
 function makeInnerPRQuery(repoName) {
