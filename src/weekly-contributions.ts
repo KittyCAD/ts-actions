@@ -5,10 +5,13 @@ import {inspect} from 'util'
 type IssueStates = 'OPEN' | 'CLOSED'
 type PRStates = IssueStates | 'MERGED'
 
+let loginToNameMap: {[key: string]: string} = {}
+
 async function main() {
   const token = core.getInput('github-token')
   const dateStr = core.getInput('date')
   const markdownPrefix = core.getInput('markdown-prefix') || ''
+  loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {}
   const octokit = github.getOctokit(token)
 
   const date = dateStr ? new Date(dateStr) : new Date()
@@ -460,17 +463,6 @@ async function main() {
 main()
 
 function loginToName(login: string): string {
-  const loginToNameMap: {[key: string]: string} = {
-    'Irev-Dev': 'Kurt',
-    hanbollar: 'Hannah',
-    iterion: 'Adam',
-    JBEmbedded: 'JB',
-    jessfraz: 'Jess',
-    jgomez720: 'Josh',
-    JordanNoone: 'Jordan',
-    mansoorsiddiqui: 'Mansoor',
-    vonniwilliams: 'Vonni'
-  }
   return loginToNameMap[login] || login
 }
 
