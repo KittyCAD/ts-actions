@@ -19,6 +19,6 @@ jobs:
       - uses: ./check-all-issues/
         id: check-all-issues
         with:
-          gh-token: ${{ secrets.GLOBAL_PAT }}
+          gh-token: ${{ secrets.GLOBAL_PROJECT_PAT }}
           project-number: 2
           gh-org: KittyCAD

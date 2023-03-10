@@ -13,6 +13,11 @@ async function main() {
   // const [token, backLogProjectNumberStr, org] = await Promise.all(
   //   ['GH_TOKEN', 'PROJECT_NUMBER', 'GH_ORG'].map(getValueFromDotEnvOrGithub)
   // )
+  console.log('has token?', token.length)
+  if (!token) {
+    console.log('other env vars', backLogProjectNumberStr, org)
+    throw new Error('No token found')
+  }
   const backLogProjectNumber = JSON.parse(backLogProjectNumberStr)
   const octoGraph = github.getOctokit(token).graphql
 

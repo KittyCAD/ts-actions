@@ -6,7 +6,7 @@ inputs:
     required: true
     description: github token
   project-number:
-    required: false
+    required: true
     description: back log project number
   gh-org:
     required: true
@@ -14,4 +14,4 @@ inputs:
   
 runs:
   using: 'node16'
-  main: '../dist/check-repo-settings/index.js'
+  main: '../dist/check-all-issues/index.js'
