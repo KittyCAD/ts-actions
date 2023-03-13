@@ -31,10 +31,10 @@ jobs:
                 "vonniwilliams": "Vonni"
               }
           ignore-summaries-login-array: |
-              {
+              [
                 "vonniwilliams",
                 "jessfraz"
-              }
+              ]
       - name: setup gh cli
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
