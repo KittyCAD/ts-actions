@@ -13,7 +13,7 @@ async function main() {
   const dateStr = core.getInput('date')
   const markdownPrefix = core.getInput('markdown-prefix') || ''
   loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {}
-  ignoreSummariesLoginArray = JSON.parse(core.getInput('ignore-summaries-login-array')) || string[]
+  ignoreSummariesLoginArray = JSON.parse(core.getInput('ignore-summaries-login-array')) || new Array<string>()
   console.log('hello');
   console.log(loginToNameMap);
   console.log('hello2');
