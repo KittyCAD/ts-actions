@@ -6,7 +6,7 @@ type IssueStates = 'OPEN' | 'CLOSED'
 type PRStates = IssueStates | 'MERGED'
 
 let loginToNameMap: {[key: string]: string} = {}
-let ignoreSummariesLoginArray: {string} = {}
+let ignoreSummariesLoginArray: { key:string } = {}
 
 async function main() {
   const token = core.getInput('github-token')
@@ -447,7 +447,7 @@ async function main() {
     ([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1)
   )
 
-  const noSummariesNeeded = Object.keys(ignoreSummariesLoginArray);
+  const noSummariesNeeded = ignoreSummariesLoginArray;
   const summaryDevs = Object.keys(loginToNameMap);
   const devContributors = orderedContributors.filter(([login]) =>
     summaryDevs.includes(login) && !noSummariesNeeded.includes(login)
