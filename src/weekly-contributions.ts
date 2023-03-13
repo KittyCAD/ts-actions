@@ -6,14 +6,14 @@ type IssueStates = 'OPEN' | 'CLOSED'
 type PRStates = IssueStates | 'MERGED'
 
 let loginToNameMap: {[key: string]: string} = {}
-let ignoreSummariesLoginArray: string[] = {}
+let ignoreSummariesLoginArray: string[] = []
 
 async function main() {
   const token = core.getInput('github-token')
   const dateStr = core.getInput('date')
   const markdownPrefix = core.getInput('markdown-prefix') || ''
   loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {}
-  ignoreSummariesLoginArray: JSON.parse(core.getInput('ignore-summaries-login-array')) || {}
+  ignoreSummariesLoginArray: JSON.parse(core.getInput('ignore-summaries-login-array')) || []
   const octokit = github.getOctokit(token)
 
   const date = dateStr ? new Date(dateStr) : new Date()
