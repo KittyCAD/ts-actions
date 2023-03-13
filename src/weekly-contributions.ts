@@ -444,7 +444,7 @@ async function main() {
   const orderedContributors = Object.entries(prGroupedByAuthor).sort(
     ([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1)
   )
-  const devs = loginToNameMap.keys();
+  const devs = [ ...loginToNameMap.keys() ];
   const devContributors = orderedContributors.filter(([login]) =>
     devs.includes(login)
   )
