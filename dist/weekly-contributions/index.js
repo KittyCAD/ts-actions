@@ -38,11 +38,13 @@ const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const util_1 = __nccwpck_require__(1669);
 let loginToNameMap = {};
+let ignoreSummariesLoginArray = [];
 async function main() {
     const token = core.getInput('github-token');
     const dateStr = core.getInput('date');
     const markdownPrefix = core.getInput('markdown-prefix') || '';
     loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {};
+    ignoreSummariesLoginArray: JSON.parse(core.getInput('ignore-summaries-login-array')) || [];
     const octokit = github.getOctokit(token);
     const date = dateStr ? new Date(dateStr) : new Date();
     const cutOffDate = new Date(date);
@@ -278,9 +280,10 @@ async function main() {
         });
     };
     const orderedContributors = Object.entries(prGroupedByAuthor).sort(([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1));
-    const devs = Object.keys(loginToNameMap);
-    const devContributors = orderedContributors.filter(([login]) => devs.includes(login));
-    const nonDevContributors = orderedContributors.filter(([login]) => !devs.includes(login) && login !== 'org-projects-app');
+    const noSummariesNeeded = ignoreSummariesLoginArray;
+    const summaryDevs = Object.keys(loginToNameMap);
+    const devContributors = orderedContributors.filter(([login]) => summaryDevs.includes(login) && !noSummariesNeeded.includes(login));
+    const nonDevContributors = orderedContributors.filter(([login]) => (noSummariesNeeded.includes(login) || (!summaryDevs.includes(login) && login !== 'org-projects-app')));
     devContributors.forEach(processAuthorGroups(true));
     markdownOutput += `\n\n<br/>\n\n -- **Other Contributors** --`;
     nonDevContributors.forEach(processAuthorGroups());
