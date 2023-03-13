@@ -6,12 +6,14 @@ type IssueStates = 'OPEN' | 'CLOSED'
 type PRStates = IssueStates | 'MERGED'
 
 let loginToNameMap: {[key: string]: string} = {}
+let ignoreSummariesLoginArray: {string} = {}
 
 async function main() {
   const token = core.getInput('github-token')
   const dateStr = core.getInput('date')
   const markdownPrefix = core.getInput('markdown-prefix') || ''
   loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {}
+  ignoreSummariesLoginArray: JSON.parse(core.getInput('ignore-summaries-login-array')) || {}
   const octokit = github.getOctokit(token)
 
   const date = dateStr ? new Date(dateStr) : new Date()
@@ -445,12 +447,13 @@ async function main() {
     ([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1)
   )
 
-  const devs = Object.keys(loginToNameMap);
+  const noSummariesNeeded = Object.keys(ignoreSummariesLoginArray);
+  const summaryDevs = Object.keys(loginToNameMap);
   const devContributors = orderedContributors.filter(([login]) =>
-    devs.includes(login)
+    summaryDevs.includes(login) && !noSummariesNeeded.includes(login)
   )
   const nonDevContributors = orderedContributors.filter(
-    ([login]) => !devs.includes(login) && login !== 'org-projects-app'
+    ([login]) => (noSummariesNeeded.includes(login) || (!summaryDevs.includes(login) && login !== 'org-projects-app'))
   )
 
   devContributors.forEach(processAuthorGroups(true))
