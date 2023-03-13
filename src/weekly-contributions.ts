@@ -445,6 +445,7 @@ async function main() {
     ([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1)
   )
 
+  console.log(loginToNameMap);
   const devs = Array.from(loginToNameMap, ([key: name], value) => (name));
   const devContributors = orderedContributors.filter(([login]) =>
     devs.includes(login)
