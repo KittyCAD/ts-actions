@@ -13,12 +13,12 @@ async function main() {
   const dateStr = core.getInput('date')
   const markdownPrefix = core.getInput('markdown-prefix') || ''
   loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {}
-  ignoreSummariesLoginArray: core.getInput('ignore-summaries-login-array') || []
+  ignoreSummariesLoginArray = core.getInput('ignore-summaries-login-array') || []
   console.log('hello');
   console.log(loginToNameMap);
   console.log('hello2');
   console.log(ignoreSummariesLoginArray);
-  
+
   const octokit = github.getOctokit(token)
 
   const date = dateStr ? new Date(dateStr) : new Date()
