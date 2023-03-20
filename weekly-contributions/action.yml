@@ -11,6 +11,12 @@ inputs:
   markdown-prefix:
     required: false
     description: Text added to the start of the markdown text
+  login-to-name-map:
+    required: false
+    description: Maps GitHub usernames to names
+  ignore-summaries-login-array:
+    required: false
+    description: Ignore summaries for these GitHub logins
 outputs:
   markdown:
     description: Output summary
