@@ -13,11 +13,9 @@ async function main() {
   const dateStr = core.getInput('date')
   const markdownPrefix = core.getInput('markdown-prefix') || ''
   loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {}
-  ignoreSummariesLoginArray = JSON.parse(core.getInput('ignore-summaries-login-array')) || new Array<string>()
-  console.log('hello');
-  console.log(loginToNameMap);
-  console.log('hello2');
-  console.log(ignoreSummariesLoginArray);
+  ignoreSummariesLoginArray =
+    JSON.parse(core.getInput('ignore-summaries-login-array')) ||
+    new Array<string>()
 
   const octokit = github.getOctokit(token)
 
@@ -452,13 +450,16 @@ async function main() {
     ([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1)
   )
 
-  const noSummariesNeeded = ignoreSummariesLoginArray;
-  const summaryDevs = Object.keys(loginToNameMap);
-  const devContributors = orderedContributors.filter(([login]) =>
-    summaryDevs.includes(login) && !noSummariesNeeded.includes(login)
+  const noSummariesNeeded = ignoreSummariesLoginArray
+  const summaryDevs = Object.keys(loginToNameMap)
+  const devContributors = orderedContributors.filter(
+    ([login]) =>
+      summaryDevs.includes(login) && !noSummariesNeeded.includes(login)
   )
   const nonDevContributors = orderedContributors.filter(
-    ([login]) => (noSummariesNeeded.includes(login) || (!summaryDevs.includes(login) && login !== 'org-projects-app'))
+    ([login]) =>
+      noSummariesNeeded.includes(login) ||
+      (!summaryDevs.includes(login) && login !== 'org-projects-app')
   )
 
   devContributors.forEach(processAuthorGroups(true))

@@ -44,11 +44,9 @@ async function main() {
     const dateStr = core.getInput('date');
     const markdownPrefix = core.getInput('markdown-prefix') || '';
     loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {};
-    ignoreSummariesLoginArray = JSON.parse(core.getInput('ignore-summaries-login-array')) || new Array();
-    console.log('hello');
-    console.log(loginToNameMap);
-    console.log('hello2');
-    console.log(ignoreSummariesLoginArray);
+    ignoreSummariesLoginArray =
+        JSON.parse(core.getInput('ignore-summaries-login-array')) ||
+            new Array();
     const octokit = github.getOctokit(token);
     const date = dateStr ? new Date(dateStr) : new Date();
     const cutOffDate = new Date(date);
@@ -287,7 +285,8 @@ async function main() {
     const noSummariesNeeded = ignoreSummariesLoginArray;
     const summaryDevs = Object.keys(loginToNameMap);
     const devContributors = orderedContributors.filter(([login]) => summaryDevs.includes(login) && !noSummariesNeeded.includes(login));
-    const nonDevContributors = orderedContributors.filter(([login]) => (noSummariesNeeded.includes(login) || (!summaryDevs.includes(login) && login !== 'org-projects-app')));
+    const nonDevContributors = orderedContributors.filter(([login]) => noSummariesNeeded.includes(login) ||
+        (!summaryDevs.includes(login) && login !== 'org-projects-app'));
     devContributors.forEach(processAuthorGroups(true));
     markdownOutput += `\n\n<br/>\n\n -- **Other Contributors** --`;
     nonDevContributors.forEach(processAuthorGroups());
