@@ -36,7 +36,7 @@ async function main() {
     `
     query {
         organization(login: "KittyCAD") {
-        repositories(first: 50){ 
+        repositories(first: 100){ 
           nodes {
             name
           }
