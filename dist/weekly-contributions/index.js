@@ -56,7 +56,7 @@ async function main() {
     const reposResponse = await octokit.graphql(`
     query {
         organization(login: "KittyCAD") {
-        repositories(first: 50){ 
+        repositories(first: 100){ 
           nodes {
             name
           }
