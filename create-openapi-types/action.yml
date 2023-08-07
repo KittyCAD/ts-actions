@@ -18,4 +18,4 @@ inputs:
  
 runs:
   main: '../dist/create-openapi-types/index.js'
-  using: 'node16'
+  using: 'node18'

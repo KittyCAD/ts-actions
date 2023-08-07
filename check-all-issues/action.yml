@@ -13,5 +13,5 @@ inputs:
     description: org name
   
 runs:
-  using: 'node16'
+  using: 'node18'
   main: '../dist/check-all-issues/index.js'

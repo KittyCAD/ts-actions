@@ -14,5 +14,5 @@ outputs:
   isproblems:
     description: if the action found any issues with our repos
 runs:
-  using: 'node16'
+  using: 'node18'
   main: '../dist/check-repo-settings/index.js'

@@ -4,10 +4,13 @@ author: 'KittyCAD'
 inputs:
   github-token:
     required: true
-    description: github token
+    description: Github Token
   date:
     required: false
-    description: date to collect activity up to, will get data of the week proceeding, if not provided it will assume now
+    description: Date to collect activity up to, will get data of the week proceeding, if not provided it will assume now
+  days-in-report:
+    required: false
+    description: Number of days for which we want collect activity
   markdown-prefix:
     required: false
     description: Text added to the start of the markdown text
@@ -21,5 +24,5 @@ outputs:
   markdown:
     description: Output summary
 runs:
-  using: 'node16'
+  using: 'node18'
   main: '../dist/weekly-contributions/index.js'

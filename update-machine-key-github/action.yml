@@ -23,5 +23,5 @@ inputs:
     default: "actions"
     description: "Update the machine key for either 'actions' or 'dependabot'"
 runs:
-  using: 'node16'
+  using: 'node18'
   main: '../dist/update-machine-key-github/index.js'
