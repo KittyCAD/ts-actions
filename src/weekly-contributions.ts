@@ -11,6 +11,7 @@ let ignoreSummariesLoginArray: string[] = []
 async function main() {
   const token = core.getInput('github-token')
   const dateStr = core.getInput('date')
+  const daysInReportStr = core.getInput('days-in-report') || '14'
   const markdownPrefix = core.getInput('markdown-prefix') || ''
   loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {}
   ignoreSummariesLoginArray =
@@ -20,9 +21,10 @@ async function main() {
   const octokit = github.getOctokit(token)
 
   const date = dateStr ? new Date(dateStr) : new Date()
+  const daysInReport = parseInt(daysInReportStr)
 
   const cutOffDate = new Date(date)
-  cutOffDate.setDate(cutOffDate.getDate() - 7)
+  cutOffDate.setDate(cutOffDate.getDate() - daysInReport)
 
   const reposResponse: {
     organization: {
