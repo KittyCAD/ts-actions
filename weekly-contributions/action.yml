@@ -4,10 +4,13 @@ author: 'KittyCAD'
 inputs:
   github-token:
     required: true
-    description: github token
+    description: Github token
   date:
     required: false
-    description: date to collect activity up to, will get data of the week proceeding, if not provided it will assume now
+    description: Date to collect activity up to, will get data of the week proceeding, if not provided it will assume now
+  days-in-report:
+    required: false
+    description: Number of days to include in the report
   markdown-prefix:
     required: false
     description: Text added to the start of the markdown text

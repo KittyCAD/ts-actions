@@ -26692,12 +26692,21 @@ module.exports = length => {
  * This is the web browser implementation of `debug()`.
  */
 
-exports.log = log;
 exports.formatArgs = formatArgs;
 exports.save = save;
 exports.load = load;
 exports.useColors = useColors;
 exports.storage = localstorage();
+exports.destroy = (() => {
+	let warned = false;
+
+	return () => {
+		if (!warned) {
+			warned = true;
+			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+		}
+	};
+})();
 
 /**
  * Colors.
@@ -26858,18 +26867,14 @@ function formatArgs(args) {
 }
 
 /**
- * Invokes `console.log()` when available.
- * No-op when `console.log` is not a "function".
+ * Invokes `console.debug()` when available.
+ * No-op when `console.debug` is not a "function".
+ * If `console.debug` is not available, falls back
+ * to `console.log`.
  *
  * @api public
  */
-function log(...args) {
-	// This hackery is required for IE8/9, where
-	// the `console.log` function doesn't have 'apply'
-	return typeof console === 'object' &&
-		console.log &&
-		console.log(...args);
-}
+exports.log = console.debug || console.log || (() => {});
 
 /**
  * Save `namespaces`.
@@ -26971,15 +26976,11 @@ function setup(env) {
 	createDebug.enable = enable;
 	createDebug.enabled = enabled;
 	createDebug.humanize = __nccwpck_require__(900);
+	createDebug.destroy = destroy;
 
 	Object.keys(env).forEach(key => {
 		createDebug[key] = env[key];
 	});
-
-	/**
-	* Active `debug` instances.
-	*/
-	createDebug.instances = [];
 
 	/**
 	* The currently active debug mode names, and names to skip.
@@ -26997,7 +26998,7 @@ function setup(env) {
 
 	/**
 	* Selects a color for a debug namespace
-	* @param {String} namespace The namespace string for the for the debug instance to be colored
+	* @param {String} namespace The namespace string for the debug instance to be colored
 	* @return {Number|String} An ANSI color code for the given namespace
 	* @api private
 	*/
@@ -27022,6 +27023,9 @@ function setup(env) {
 	*/
 	function createDebug(namespace) {
 		let prevTime;
+		let enableOverride = null;
+		let namespacesCache;
+		let enabledCache;
 
 		function debug(...args) {
 			// Disabled?
@@ -27051,7 +27055,7 @@ function setup(env) {
 			args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
 				// If we encounter an escaped % then don't increase the array index
 				if (match === '%%') {
-					return match;
+					return '%';
 				}
 				index++;
 				const formatter = createDebug.formatters[format];
@@ -27074,31 +27078,36 @@ function setup(env) {
 		}
 
 		debug.namespace = namespace;
-		debug.enabled = createDebug.enabled(namespace);
 		debug.useColors = createDebug.useColors();
-		debug.color = selectColor(namespace);
-		debug.destroy = destroy;
+		debug.color = createDebug.selectColor(namespace);
 		debug.extend = extend;
-		// Debug.formatArgs = formatArgs;
-		// debug.rawLog = rawLog;
+		debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
 
-		// env-specific initialization logic for debug instances
+		Object.defineProperty(debug, 'enabled', {
+			enumerable: true,
+			configurable: false,
+			get: () => {
+				if (enableOverride !== null) {
+					return enableOverride;
+				}
+				if (namespacesCache !== createDebug.namespaces) {
+					namespacesCache = createDebug.namespaces;
+					enabledCache = createDebug.enabled(namespace);
+				}
+
+				return enabledCache;
+			},
+			set: v => {
+				enableOverride = v;
+			}
+		});
+
+		// Env-specific initialization logic for debug instances
 		if (typeof createDebug.init === 'function') {
 			createDebug.init(debug);
 		}
 
-		createDebug.instances.push(debug);
-
 		return debug;
-	}
-
-	function destroy() {
-		const index = createDebug.instances.indexOf(this);
-		if (index !== -1) {
-			createDebug.instances.splice(index, 1);
-			return true;
-		}
-		return false;
 	}
 
 	function extend(namespace, delimiter) {
@@ -27116,6 +27125,7 @@ function setup(env) {
 	*/
 	function enable(namespaces) {
 		createDebug.save(namespaces);
+		createDebug.namespaces = namespaces;
 
 		createDebug.names = [];
 		createDebug.skips = [];
@@ -27133,15 +27143,10 @@ function setup(env) {
 			namespaces = split[i].replace(/\*/g, '.*?');
 
 			if (namespaces[0] === '-') {
-				createDebug.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
+				createDebug.skips.push(new RegExp('^' + namespaces.slice(1) + '$'));
 			} else {
 				createDebug.names.push(new RegExp('^' + namespaces + '$'));
 			}
-		}
-
-		for (i = 0; i < createDebug.instances.length; i++) {
-			const instance = createDebug.instances[i];
-			instance.enabled = createDebug.enabled(instance.namespace);
 		}
 	}
 
@@ -27217,6 +27222,14 @@ function setup(env) {
 		return val;
 	}
 
+	/**
+	* XXX DO NOT USE. This is a temporary stub function.
+	* XXX It WILL be removed in the next major release.
+	*/
+	function destroy() {
+		console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+	}
+
 	createDebug.enable(createDebug.load());
 
 	return createDebug;
@@ -27264,6 +27277,10 @@ exports.formatArgs = formatArgs;
 exports.save = save;
 exports.load = load;
 exports.useColors = useColors;
+exports.destroy = util.deprecate(
+	() => {},
+	'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
+);
 
 /**
  * Colors.
@@ -27493,7 +27510,9 @@ const {formatters} = module.exports;
 formatters.o = function (v) {
 	this.inspectOpts.colors = this.useColors;
 	return util.inspect(v, this.inspectOpts)
-		.replace(/\s*\n\s*/g, ' ');
+		.split('\n')
+		.map(str => str.trim())
+		.join(' ');
 };
 
 /**
@@ -29439,13 +29458,62 @@ module.exports = function extend() {
 
 /***/ }),
 
+/***/ 4460:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var isGlob = __nccwpck_require__(4466);
+var pathPosixDirname = __nccwpck_require__(5622).posix.dirname;
+var isWin32 = __nccwpck_require__(2087).platform() === 'win32';
+
+var slash = '/';
+var backslash = /\\/g;
+var enclosure = /[\{\[].*[\}\]]$/;
+var globby = /(^|[^\\])([\{\[]|\([^\)]+$)/;
+var escaped = /\\([\!\*\?\|\[\]\(\)\{\}])/g;
+
+/**
+ * @param {string} str
+ * @param {Object} opts
+ * @param {boolean} [opts.flipBackslashes=true]
+ * @returns {string}
+ */
+module.exports = function globParent(str, opts) {
+  var options = Object.assign({ flipBackslashes: true }, opts);
+
+  // flip windows path separators
+  if (options.flipBackslashes && isWin32 && str.indexOf(slash) < 0) {
+    str = str.replace(backslash, slash);
+  }
+
+  // special case for strings ending in enclosure containing path separator
+  if (enclosure.test(str)) {
+    str += slash;
+  }
+
+  // preserves full path in case of trailing path separator
+  str += 'a';
+
+  // remove path parts that are globby
+  do {
+    str = pathPosixDirname(str);
+  } while (isGlob(str) || globby.test(str));
+
+  // remove escape chars and return result
+  return str.replace(escaped, '$1');
+};
+
+
+/***/ }),
+
 /***/ 3664:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 const taskManager = __nccwpck_require__(2708);
-const patternManager = __nccwpck_require__(8306);
 const async_1 = __nccwpck_require__(5679);
 const stream_1 = __nccwpck_require__(4630);
 const sync_1 = __nccwpck_require__(2405);
@@ -29460,6 +29528,10 @@ async function FastGlob(source, options) {
 // https://github.com/typescript-eslint/typescript-eslint/issues/60
 // eslint-disable-next-line no-redeclare
 (function (FastGlob) {
+    FastGlob.glob = FastGlob;
+    FastGlob.globSync = sync;
+    FastGlob.globStream = stream;
+    FastGlob.async = FastGlob;
     function sync(source, options) {
         assertPatternsInput(source);
         const works = getWorks(source, sync_1.default, options);
@@ -29479,7 +29551,7 @@ async function FastGlob(source, options) {
     FastGlob.stream = stream;
     function generateTasks(source, options) {
         assertPatternsInput(source);
-        const patterns = patternManager.transform([].concat(source));
+        const patterns = [].concat(source);
         const settings = new settings_1.default(options);
         return taskManager.generate(patterns, settings);
     }
@@ -29495,9 +29567,40 @@ async function FastGlob(source, options) {
         return utils.path.escape(source);
     }
     FastGlob.escapePath = escapePath;
+    function convertPathToPattern(source) {
+        assertPatternsInput(source);
+        return utils.path.convertPathToPattern(source);
+    }
+    FastGlob.convertPathToPattern = convertPathToPattern;
+    let posix;
+    (function (posix) {
+        function escapePath(source) {
+            assertPatternsInput(source);
+            return utils.path.escapePosixPath(source);
+        }
+        posix.escapePath = escapePath;
+        function convertPathToPattern(source) {
+            assertPatternsInput(source);
+            return utils.path.convertPosixPathToPattern(source);
+        }
+        posix.convertPathToPattern = convertPathToPattern;
+    })(posix = FastGlob.posix || (FastGlob.posix = {}));
+    let win32;
+    (function (win32) {
+        function escapePath(source) {
+            assertPatternsInput(source);
+            return utils.path.escapeWindowsPath(source);
+        }
+        win32.escapePath = escapePath;
+        function convertPathToPattern(source) {
+            assertPatternsInput(source);
+            return utils.path.convertWindowsPathToPattern(source);
+        }
+        win32.convertPathToPattern = convertPathToPattern;
+    })(win32 = FastGlob.win32 || (FastGlob.win32 = {}));
 })(FastGlob || (FastGlob = {}));
 function getWorks(source, _Provider, options) {
-    const patterns = patternManager.transform([].concat(source));
+    const patterns = [].concat(source);
     const settings = new settings_1.default(options);
     const tasks = taskManager.generate(patterns, settings);
     const provider = new _Provider(settings);
@@ -29515,35 +29618,6 @@ module.exports = FastGlob;
 
 /***/ }),
 
-/***/ 8306:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.removeDuplicateSlashes = exports.transform = void 0;
-/**
- * Matches a sequence of two or more consecutive slashes, excluding the first two slashes at the beginning of the string.
- * The latter is due to the presence of the device path at the beginning of the UNC path.
- * @todo rewrite to negative lookbehind with the next major release.
- */
-const DOUBLE_SLASH_RE = /(?!^)\/{2,}/g;
-function transform(patterns) {
-    return patterns.map((pattern) => removeDuplicateSlashes(pattern));
-}
-exports.transform = transform;
-/**
- * This package only works with forward slashes as a path separator.
- * Because of this, we cannot use the standard `path.normalize` method, because on Windows platform it will use of backslashes.
- */
-function removeDuplicateSlashes(pattern) {
-    return pattern.replace(DOUBLE_SLASH_RE, '/');
-}
-exports.removeDuplicateSlashes = removeDuplicateSlashes;
-
-
-/***/ }),
-
 /***/ 2708:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -29552,9 +29626,11 @@ exports.removeDuplicateSlashes = removeDuplicateSlashes;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.convertPatternGroupToTask = exports.convertPatternGroupsToTasks = exports.groupPatternsByBaseDirectory = exports.getNegativePatternsAsPositive = exports.getPositivePatterns = exports.convertPatternsToTasks = exports.generate = void 0;
 const utils = __nccwpck_require__(5444);
-function generate(patterns, settings) {
+function generate(input, settings) {
+    const patterns = processPatterns(input, settings);
+    const ignore = processPatterns(settings.ignore, settings);
     const positivePatterns = getPositivePatterns(patterns);
-    const negativePatterns = getNegativePatternsAsPositive(patterns, settings.ignore);
+    const negativePatterns = getNegativePatternsAsPositive(patterns, ignore);
     const staticPatterns = positivePatterns.filter((pattern) => utils.pattern.isStaticPattern(pattern, settings));
     const dynamicPatterns = positivePatterns.filter((pattern) => utils.pattern.isDynamicPattern(pattern, settings));
     const staticTasks = convertPatternsToTasks(staticPatterns, negativePatterns, /* dynamic */ false);
@@ -29562,6 +29638,34 @@ function generate(patterns, settings) {
     return staticTasks.concat(dynamicTasks);
 }
 exports.generate = generate;
+function processPatterns(input, settings) {
+    let patterns = input;
+    /**
+     * The original pattern like `{,*,**,a/*}` can lead to problems checking the depth when matching entry
+     * and some problems with the micromatch package (see fast-glob issues: #365, #394).
+     *
+     * To solve this problem, we expand all patterns containing brace expansion. This can lead to a slight slowdown
+     * in matching in the case of a large set of patterns after expansion.
+     */
+    if (settings.braceExpansion) {
+        patterns = utils.pattern.expandPatternsWithBraceExpansion(patterns);
+    }
+    /**
+     * If the `baseNameMatch` option is enabled, we must add globstar to patterns, so that they can be used
+     * at any nesting level.
+     *
+     * We do this here, because otherwise we have to complicate the filtering logic. For example, we need to change
+     * the pattern in the filter before creating a regular expression. There is no need to change the patterns
+     * in the application. Only on the input.
+     */
+    if (settings.baseNameMatch) {
+        patterns = patterns.map((pattern) => pattern.includes('/') ? pattern : `**/${pattern}`);
+    }
+    /**
+     * This method also removes duplicate slashes that may have been in the pattern or formed as a result of expansion.
+     */
+    return patterns.map((pattern) => utils.pattern.removeDuplicateSlashes(pattern));
+}
 /**
  * Returns tasks grouped by basic pattern directories.
  *
@@ -29638,23 +29742,18 @@ exports.convertPatternGroupToTask = convertPatternGroupToTask;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const stream_1 = __nccwpck_require__(2083);
+const async_1 = __nccwpck_require__(7747);
 const provider_1 = __nccwpck_require__(257);
 class ProviderAsync extends provider_1.default {
     constructor() {
         super(...arguments);
-        this._reader = new stream_1.default(this._settings);
+        this._reader = new async_1.default(this._settings);
     }
-    read(task) {
+    async read(task) {
         const root = this._getRootDirectory(task);
         const options = this._getReaderOptions(task);
-        const entries = [];
-        return new Promise((resolve, reject) => {
-            const stream = this.api(root, task, options);
-            stream.once('error', reject);
-            stream.on('data', (entry) => entries.push(options.transform(entry)));
-            stream.once('end', () => resolve(entries));
-        });
+        const entries = await this.api(root, task, options);
+        return entries.map((entry) => options.transform(entry));
     }
     api(root, task, options) {
         if (task.dynamic) {
@@ -29753,31 +29852,32 @@ class EntryFilter {
     }
     getFilter(positive, negative) {
         const positiveRe = utils.pattern.convertPatternsToRe(positive, this._micromatchOptions);
-        const negativeRe = utils.pattern.convertPatternsToRe(negative, this._micromatchOptions);
+        const negativeRe = utils.pattern.convertPatternsToRe(negative, Object.assign(Object.assign({}, this._micromatchOptions), { dot: true }));
         return (entry) => this._filter(entry, positiveRe, negativeRe);
     }
     _filter(entry, positiveRe, negativeRe) {
-        if (this._settings.unique && this._isDuplicateEntry(entry)) {
+        const filepath = utils.path.removeLeadingDotSegment(entry.path);
+        if (this._settings.unique && this._isDuplicateEntry(filepath)) {
             return false;
         }
         if (this._onlyFileFilter(entry) || this._onlyDirectoryFilter(entry)) {
             return false;
         }
-        if (this._isSkippedByAbsoluteNegativePatterns(entry.path, negativeRe)) {
+        if (this._isSkippedByAbsoluteNegativePatterns(filepath, negativeRe)) {
             return false;
         }
-        const filepath = this._settings.baseNameMatch ? entry.name : entry.path;
-        const isMatched = this._isMatchToPatterns(filepath, positiveRe) && !this._isMatchToPatterns(entry.path, negativeRe);
+        const isDirectory = entry.dirent.isDirectory();
+        const isMatched = this._isMatchToPatterns(filepath, positiveRe, isDirectory) && !this._isMatchToPatterns(filepath, negativeRe, isDirectory);
         if (this._settings.unique && isMatched) {
-            this._createIndexRecord(entry);
+            this._createIndexRecord(filepath);
         }
         return isMatched;
     }
-    _isDuplicateEntry(entry) {
-        return this.index.has(entry.path);
+    _isDuplicateEntry(filepath) {
+        return this.index.has(filepath);
     }
-    _createIndexRecord(entry) {
-        this.index.set(entry.path, undefined);
+    _createIndexRecord(filepath) {
+        this.index.set(filepath, undefined);
     }
     _onlyFileFilter(entry) {
         return this._settings.onlyFiles && !entry.dirent.isFile();
@@ -29792,13 +29892,15 @@ class EntryFilter {
         const fullpath = utils.path.makeAbsolute(this._settings.cwd, entryPath);
         return utils.pattern.matchAny(fullpath, patternsRe);
     }
-    /**
-     * First, just trying to apply patterns to the path.
-     * Second, trying to apply patterns to the path with final slash.
-     */
-    _isMatchToPatterns(entryPath, patternsRe) {
-        const filepath = utils.path.removeLeadingDotSegment(entryPath);
-        return utils.pattern.matchAny(filepath, patternsRe) || utils.pattern.matchAny(filepath + '/', patternsRe);
+    _isMatchToPatterns(filepath, patternsRe, isDirectory) {
+        // Trying to match files and directories by patterns.
+        const isMatched = utils.pattern.matchAny(filepath, patternsRe);
+        // A pattern with a trailling slash can be used for directory matching.
+        // To apply such pattern, we need to add a tralling slash to the path.
+        if (!isMatched && isDirectory) {
+            return utils.pattern.matchAny(filepath + '/', patternsRe);
+        }
+        return isMatched;
     }
 }
 exports.default = EntryFilter;
@@ -29845,12 +29947,7 @@ class Matcher {
         this._fillStorage();
     }
     _fillStorage() {
-        /**
-         * The original pattern may include `{,*,**,a/*}`, which will lead to problems with matching (unresolved level).
-         * So, before expand patterns with brace expansion into separated patterns.
-         */
-        const patterns = utils.pattern.expandPatternsWithBraceExpansion(this._patterns);
-        for (const pattern of patterns) {
+        for (const pattern of this._patterns) {
             const segments = this._getPatternSegments(pattern);
             const sections = this._splitSegmentsIntoSections(segments);
             this._storage.push({
@@ -30093,6 +30190,49 @@ exports.default = EntryTransformer;
 
 /***/ }),
 
+/***/ 7747:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const fsWalk = __nccwpck_require__(6026);
+const reader_1 = __nccwpck_require__(5582);
+const stream_1 = __nccwpck_require__(2083);
+class ReaderAsync extends reader_1.default {
+    constructor() {
+        super(...arguments);
+        this._walkAsync = fsWalk.walk;
+        this._readerStream = new stream_1.default(this._settings);
+    }
+    dynamic(root, options) {
+        return new Promise((resolve, reject) => {
+            this._walkAsync(root, options, (error, entries) => {
+                if (error === null) {
+                    resolve(entries);
+                }
+                else {
+                    reject(error);
+                }
+            });
+        });
+    }
+    async static(patterns, options) {
+        const entries = [];
+        const stream = this._readerStream.static(patterns, options);
+        // After #235, replace it with an asynchronous iterator.
+        return new Promise((resolve, reject) => {
+            stream.once('error', reject);
+            stream.on('data', (entry) => entries.push(entry));
+            stream.once('end', () => resolve(entries));
+        });
+    }
+}
+exports.default = ReaderAsync;
+
+
+/***/ }),
+
 /***/ 5582:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -30300,6 +30440,8 @@ class Settings {
         if (this.stats) {
             this.objectMode = true;
         }
+        // Remove the cast to the array in the next major (#404).
+        this.ignore = [].concat(this.ignore);
     }
     _getValue(option, value) {
         return option === undefined ? value : option;
@@ -30416,10 +30558,29 @@ exports.string = string;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.removeLeadingDotSegment = exports.escape = exports.makeAbsolute = exports.unixify = void 0;
+exports.convertPosixPathToPattern = exports.convertWindowsPathToPattern = exports.convertPathToPattern = exports.escapePosixPath = exports.escapeWindowsPath = exports.escape = exports.removeLeadingDotSegment = exports.makeAbsolute = exports.unixify = void 0;
+const os = __nccwpck_require__(2087);
 const path = __nccwpck_require__(5622);
+const IS_WINDOWS_PLATFORM = os.platform() === 'win32';
 const LEADING_DOT_SEGMENT_CHARACTERS_COUNT = 2; // ./ or .\\
-const UNESCAPED_GLOB_SYMBOLS_RE = /(\\?)([()*?[\]{|}]|^!|[!+@](?=\())/g;
+/**
+ * All non-escaped special characters.
+ * Posix: ()*?[\]{|}, !+@ before (, ! at the beginning, \\ before non-special characters.
+ * Windows: (){}, !+@ before (, ! at the beginning.
+ */
+const POSIX_UNESCAPED_GLOB_SYMBOLS_RE = /(\\?)([()*?[\]{|}]|^!|[!+@](?=\()|\\(?![!()*+?@[\]{|}]))/g;
+const WINDOWS_UNESCAPED_GLOB_SYMBOLS_RE = /(\\?)([(){}]|^!|[!+@](?=\())/g;
+/**
+ * The device path (\\.\ or \\?\).
+ * https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats#dos-device-paths
+ */
+const DOS_DEVICE_PATH_RE = /^\\\\([.?])/;
+/**
+ * All backslashes except those escaping special characters.
+ * Windows: !()+@{}
+ * https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
+ */
+const WINDOWS_BACKSLASHES_RE = /\\(?![!()+@{}])/g;
 /**
  * Designed to work only with simple paths: `dir\\file`.
  */
@@ -30431,10 +30592,6 @@ function makeAbsolute(cwd, filepath) {
     return path.resolve(cwd, filepath);
 }
 exports.makeAbsolute = makeAbsolute;
-function escape(pattern) {
-    return pattern.replace(UNESCAPED_GLOB_SYMBOLS_RE, '\\$2');
-}
-exports.escape = escape;
 function removeLeadingDotSegment(entry) {
     // We do not use `startsWith` because this is 10x slower than current implementation for some cases.
     // eslint-disable-next-line @typescript-eslint/prefer-string-starts-ends-with
@@ -30447,6 +30604,26 @@ function removeLeadingDotSegment(entry) {
     return entry;
 }
 exports.removeLeadingDotSegment = removeLeadingDotSegment;
+exports.escape = IS_WINDOWS_PLATFORM ? escapeWindowsPath : escapePosixPath;
+function escapeWindowsPath(pattern) {
+    return pattern.replace(WINDOWS_UNESCAPED_GLOB_SYMBOLS_RE, '\\$2');
+}
+exports.escapeWindowsPath = escapeWindowsPath;
+function escapePosixPath(pattern) {
+    return pattern.replace(POSIX_UNESCAPED_GLOB_SYMBOLS_RE, '\\$2');
+}
+exports.escapePosixPath = escapePosixPath;
+exports.convertPathToPattern = IS_WINDOWS_PLATFORM ? convertWindowsPathToPattern : convertPosixPathToPattern;
+function convertWindowsPathToPattern(filepath) {
+    return escapeWindowsPath(filepath)
+        .replace(DOS_DEVICE_PATH_RE, '//$1')
+        .replace(WINDOWS_BACKSLASHES_RE, '/');
+}
+exports.convertWindowsPathToPattern = convertWindowsPathToPattern;
+function convertPosixPathToPattern(filepath) {
+    return escapePosixPath(filepath);
+}
+exports.convertPosixPathToPattern = convertPosixPathToPattern;
 
 
 /***/ }),
@@ -30457,9 +30634,9 @@ exports.removeLeadingDotSegment = removeLeadingDotSegment;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.matchAny = exports.convertPatternsToRe = exports.makeRe = exports.getPatternParts = exports.expandBraceExpansion = exports.expandPatternsWithBraceExpansion = exports.isAffectDepthOfReadingPattern = exports.endsWithSlashGlobStar = exports.hasGlobStar = exports.getBaseDirectory = exports.isPatternRelatedToParentDirectory = exports.getPatternsOutsideCurrentDirectory = exports.getPatternsInsideCurrentDirectory = exports.getPositivePatterns = exports.getNegativePatterns = exports.isPositivePattern = exports.isNegativePattern = exports.convertToNegativePattern = exports.convertToPositivePattern = exports.isDynamicPattern = exports.isStaticPattern = void 0;
+exports.removeDuplicateSlashes = exports.matchAny = exports.convertPatternsToRe = exports.makeRe = exports.getPatternParts = exports.expandBraceExpansion = exports.expandPatternsWithBraceExpansion = exports.isAffectDepthOfReadingPattern = exports.endsWithSlashGlobStar = exports.hasGlobStar = exports.getBaseDirectory = exports.isPatternRelatedToParentDirectory = exports.getPatternsOutsideCurrentDirectory = exports.getPatternsInsideCurrentDirectory = exports.getPositivePatterns = exports.getNegativePatterns = exports.isPositivePattern = exports.isNegativePattern = exports.convertToNegativePattern = exports.convertToPositivePattern = exports.isDynamicPattern = exports.isStaticPattern = void 0;
 const path = __nccwpck_require__(5622);
-const globParent = __nccwpck_require__(4655);
+const globParent = __nccwpck_require__(4460);
 const micromatch = __nccwpck_require__(6228);
 const GLOBSTAR = '**';
 const ESCAPE_SYMBOL = '\\';
@@ -30468,6 +30645,11 @@ const REGEX_CHARACTER_CLASS_SYMBOLS_RE = /\[[^[]*]/;
 const REGEX_GROUP_SYMBOLS_RE = /(?:^|[^!*+?@])\([^(]*\|[^|]*\)/;
 const GLOB_EXTENSION_SYMBOLS_RE = /[!*+?@]\([^(]*\)/;
 const BRACE_EXPANSION_SEPARATORS_RE = /,|\.\./;
+/**
+ * Matches a sequence of two or more consecutive slashes, excluding the first two slashes at the beginning of the string.
+ * The latter is due to the presence of the device path at the beginning of the UNC path.
+ */
+const DOUBLE_SLASH_RE = /(?!^)\/{2,}/g;
 function isStaticPattern(pattern, options = {}) {
     return !isDynamicPattern(pattern, options);
 }
@@ -30586,10 +30768,16 @@ function expandPatternsWithBraceExpansion(patterns) {
 }
 exports.expandPatternsWithBraceExpansion = expandPatternsWithBraceExpansion;
 function expandBraceExpansion(pattern) {
-    return micromatch.braces(pattern, {
-        expand: true,
-        nodupes: true
-    });
+    const patterns = micromatch.braces(pattern, { expand: true, nodupes: true });
+    /**
+     * Sort the patterns by length so that the same depth patterns are processed side by side.
+     * `a/{b,}/{c,}/*` – `['a///*', 'a/b//*', 'a//c/*', 'a/b/c/*']`
+     */
+    patterns.sort((a, b) => a.length - b.length);
+    /**
+     * Micromatch can return an empty string in the case of patterns like `{a,}`.
+     */
+    return patterns.filter((pattern) => pattern !== '');
 }
 exports.expandBraceExpansion = expandBraceExpansion;
 function getPatternParts(pattern, options) {
@@ -30624,6 +30812,14 @@ function matchAny(entry, patternsRe) {
     return patternsRe.some((patternRe) => patternRe.test(entry));
 }
 exports.matchAny = matchAny;
+/**
+ * This package only works with forward slashes as a path separator.
+ * Because of this, we cannot use the standard `path.normalize` method, because on Windows platform it will use of backslashes.
+ */
+function removeDuplicateSlashes(pattern) {
+    return pattern.replace(DOUBLE_SLASH_RE, '/');
+}
+exports.removeDuplicateSlashes = removeDuplicateSlashes;
 
 
 /***/ }),
@@ -35895,56 +36091,6 @@ exports.requestTimeout = requestTimeout;
 
 /***/ }),
 
-/***/ 4655:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var isGlob = __nccwpck_require__(4466);
-var pathPosixDirname = __nccwpck_require__(5622).posix.dirname;
-var isWin32 = __nccwpck_require__(2087).platform() === 'win32';
-
-var slash = '/';
-var backslash = /\\/g;
-var enclosure = /[\{\[].*[\}\]]$/;
-var globby = /(^|[^\\])([\{\[]|\([^\)]+$)/;
-var escaped = /\\([\!\*\?\|\[\]\(\)\{\}])/g;
-
-/**
- * @param {string} str
- * @param {Object} opts
- * @param {boolean} [opts.flipBackslashes=true]
- * @returns {string}
- */
-module.exports = function globParent(str, opts) {
-  var options = Object.assign({ flipBackslashes: true }, opts);
-
-  // flip windows path separators
-  if (options.flipBackslashes && isWin32 && str.indexOf(slash) < 0) {
-    str = str.replace(backslash, slash);
-  }
-
-  // special case for strings ending in enclosure containing path separator
-  if (enclosure.test(str)) {
-    str += slash;
-  }
-
-  // preserves full path in case of trailing path separator
-  str += 'a';
-
-  // remove path parts that are globby
-  do {
-    str = pathPosixDirname(str);
-  } while (isGlob(str) || globby.test(str));
-
-  // remove escape chars and return result
-  return str.replace(escaped, '$1');
-};
-
-
-/***/ }),
-
 /***/ 4824:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __nccwpck_require__) => {
 
@@ -35976,8 +36122,8 @@ var out = __nccwpck_require__(3664);
 var dir_glob = __nccwpck_require__(2738);
 ;// CONCATENATED MODULE: external "node:process"
 const external_node_process_namespaceObject = require("node:process");
-// EXTERNAL MODULE: ./node_modules/globby/node_modules/ignore/index.js
-var ignore = __nccwpck_require__(2069);
+// EXTERNAL MODULE: ./node_modules/ignore/index.js
+var ignore = __nccwpck_require__(4777);
 ;// CONCATENATED MODULE: ./node_modules/globby/node_modules/slash/index.js
 function slash(path) {
 	const isExtendedLengthPath = /^\\\\\?\\/.test(path);
@@ -36328,616 +36474,6 @@ const generateGlobTasks = normalizeArguments(generateTasks);
 const generateGlobTasksSync = normalizeArgumentsSync(generateTasksSync);
 
 
-
-
-/***/ }),
-
-/***/ 2069:
-/***/ ((module) => {
-
-// A simple implementation of make-array
-function makeArray (subject) {
-  return Array.isArray(subject)
-    ? subject
-    : [subject]
-}
-
-const EMPTY = ''
-const SPACE = ' '
-const ESCAPE = '\\'
-const REGEX_TEST_BLANK_LINE = /^\s+$/
-const REGEX_REPLACE_LEADING_EXCAPED_EXCLAMATION = /^\\!/
-const REGEX_REPLACE_LEADING_EXCAPED_HASH = /^\\#/
-const REGEX_SPLITALL_CRLF = /\r?\n/g
-// /foo,
-// ./foo,
-// ../foo,
-// .
-// ..
-const REGEX_TEST_INVALID_PATH = /^\.*\/|^\.+$/
-
-const SLASH = '/'
-const KEY_IGNORE = typeof Symbol !== 'undefined'
-  ? Symbol.for('node-ignore')
-  /* istanbul ignore next */
-  : 'node-ignore'
-
-const define = (object, key, value) =>
-  Object.defineProperty(object, key, {value})
-
-const REGEX_REGEXP_RANGE = /([0-z])-([0-z])/g
-
-const RETURN_FALSE = () => false
-
-// Sanitize the range of a regular expression
-// The cases are complicated, see test cases for details
-const sanitizeRange = range => range.replace(
-  REGEX_REGEXP_RANGE,
-  (match, from, to) => from.charCodeAt(0) <= to.charCodeAt(0)
-    ? match
-    // Invalid range (out of order) which is ok for gitignore rules but
-    //   fatal for JavaScript regular expression, so eliminate it.
-    : EMPTY
-)
-
-// See fixtures #59
-const cleanRangeBackSlash = slashes => {
-  const {length} = slashes
-  return slashes.slice(0, length - length % 2)
-}
-
-// > If the pattern ends with a slash,
-// > it is removed for the purpose of the following description,
-// > but it would only find a match with a directory.
-// > In other words, foo/ will match a directory foo and paths underneath it,
-// > but will not match a regular file or a symbolic link foo
-// >  (this is consistent with the way how pathspec works in general in Git).
-// '`foo/`' will not match regular file '`foo`' or symbolic link '`foo`'
-// -> ignore-rules will not deal with it, because it costs extra `fs.stat` call
-//      you could use option `mark: true` with `glob`
-
-// '`foo/`' should not continue with the '`..`'
-const REPLACERS = [
-
-  // > Trailing spaces are ignored unless they are quoted with backslash ("\")
-  [
-    // (a\ ) -> (a )
-    // (a  ) -> (a)
-    // (a \ ) -> (a  )
-    /\\?\s+$/,
-    match => match.indexOf('\\') === 0
-      ? SPACE
-      : EMPTY
-  ],
-
-  // replace (\ ) with ' '
-  [
-    /\\\s/g,
-    () => SPACE
-  ],
-
-  // Escape metacharacters
-  // which is written down by users but means special for regular expressions.
-
-  // > There are 12 characters with special meanings:
-  // > - the backslash \,
-  // > - the caret ^,
-  // > - the dollar sign $,
-  // > - the period or dot .,
-  // > - the vertical bar or pipe symbol |,
-  // > - the question mark ?,
-  // > - the asterisk or star *,
-  // > - the plus sign +,
-  // > - the opening parenthesis (,
-  // > - the closing parenthesis ),
-  // > - and the opening square bracket [,
-  // > - the opening curly brace {,
-  // > These special characters are often called "metacharacters".
-  [
-    /[\\$.|*+(){^]/g,
-    match => `\\${match}`
-  ],
-
-  [
-    // > a question mark (?) matches a single character
-    /(?!\\)\?/g,
-    () => '[^/]'
-  ],
-
-  // leading slash
-  [
-
-    // > A leading slash matches the beginning of the pathname.
-    // > For example, "/*.c" matches "cat-file.c" but not "mozilla-sha1/sha1.c".
-    // A leading slash matches the beginning of the pathname
-    /^\//,
-    () => '^'
-  ],
-
-  // replace special metacharacter slash after the leading slash
-  [
-    /\//g,
-    () => '\\/'
-  ],
-
-  [
-    // > A leading "**" followed by a slash means match in all directories.
-    // > For example, "**/foo" matches file or directory "foo" anywhere,
-    // > the same as pattern "foo".
-    // > "**/foo/bar" matches file or directory "bar" anywhere that is directly
-    // >   under directory "foo".
-    // Notice that the '*'s have been replaced as '\\*'
-    /^\^*\\\*\\\*\\\//,
-
-    // '**/foo' <-> 'foo'
-    () => '^(?:.*\\/)?'
-  ],
-
-  // starting
-  [
-    // there will be no leading '/'
-    //   (which has been replaced by section "leading slash")
-    // If starts with '**', adding a '^' to the regular expression also works
-    /^(?=[^^])/,
-    function startingReplacer () {
-      // If has a slash `/` at the beginning or middle
-      return !/\/(?!$)/.test(this)
-        // > Prior to 2.22.1
-        // > If the pattern does not contain a slash /,
-        // >   Git treats it as a shell glob pattern
-        // Actually, if there is only a trailing slash,
-        //   git also treats it as a shell glob pattern
-
-        // After 2.22.1 (compatible but clearer)
-        // > If there is a separator at the beginning or middle (or both)
-        // > of the pattern, then the pattern is relative to the directory
-        // > level of the particular .gitignore file itself.
-        // > Otherwise the pattern may also match at any level below
-        // > the .gitignore level.
-        ? '(?:^|\\/)'
-
-        // > Otherwise, Git treats the pattern as a shell glob suitable for
-        // >   consumption by fnmatch(3)
-        : '^'
-    }
-  ],
-
-  // two globstars
-  [
-    // Use lookahead assertions so that we could match more than one `'/**'`
-    /\\\/\\\*\\\*(?=\\\/|$)/g,
-
-    // Zero, one or several directories
-    // should not use '*', or it will be replaced by the next replacer
-
-    // Check if it is not the last `'/**'`
-    (_, index, str) => index + 6 < str.length
-
-      // case: /**/
-      // > A slash followed by two consecutive asterisks then a slash matches
-      // >   zero or more directories.
-      // > For example, "a/**/b" matches "a/b", "a/x/b", "a/x/y/b" and so on.
-      // '/**/'
-      ? '(?:\\/[^\\/]+)*'
-
-      // case: /**
-      // > A trailing `"/**"` matches everything inside.
-
-      // #21: everything inside but it should not include the current folder
-      : '\\/.+'
-  ],
-
-  // intermediate wildcards
-  [
-    // Never replace escaped '*'
-    // ignore rule '\*' will match the path '*'
-
-    // 'abc.*/' -> go
-    // 'abc.*'  -> skip this rule
-    /(^|[^\\]+)\\\*(?=.+)/g,
-
-    // '*.js' matches '.js'
-    // '*.js' doesn't match 'abc'
-    (_, p1) => `${p1}[^\\/]*`
-  ],
-
-  [
-    // unescape, revert step 3 except for back slash
-    // For example, if a user escape a '\\*',
-    // after step 3, the result will be '\\\\\\*'
-    /\\\\\\(?=[$.|*+(){^])/g,
-    () => ESCAPE
-  ],
-
-  [
-    // '\\\\' -> '\\'
-    /\\\\/g,
-    () => ESCAPE
-  ],
-
-  [
-    // > The range notation, e.g. [a-zA-Z],
-    // > can be used to match one of the characters in a range.
-
-    // `\` is escaped by step 3
-    /(\\)?\[([^\]/]*?)(\\*)($|\])/g,
-    (match, leadEscape, range, endEscape, close) => leadEscape === ESCAPE
-      // '\\[bar]' -> '\\\\[bar\\]'
-      ? `\\[${range}${cleanRangeBackSlash(endEscape)}${close}`
-      : close === ']'
-        ? endEscape.length % 2 === 0
-          // A normal case, and it is a range notation
-          // '[bar]'
-          // '[bar\\\\]'
-          ? `[${sanitizeRange(range)}${endEscape}]`
-          // Invalid range notaton
-          // '[bar\\]' -> '[bar\\\\]'
-          : '[]'
-        : '[]'
-  ],
-
-  // ending
-  [
-    // 'js' will not match 'js.'
-    // 'ab' will not match 'abc'
-    /(?:[^*])$/,
-
-    // WTF!
-    // https://git-scm.com/docs/gitignore
-    // changes in [2.22.1](https://git-scm.com/docs/gitignore/2.22.1)
-    // which re-fixes #24, #38
-
-    // > If there is a separator at the end of the pattern then the pattern
-    // > will only match directories, otherwise the pattern can match both
-    // > files and directories.
-
-    // 'js*' will not match 'a.js'
-    // 'js/' will not match 'a.js'
-    // 'js' will match 'a.js' and 'a.js/'
-    match => /\/$/.test(match)
-      // foo/ will not match 'foo'
-      ? `${match}$`
-      // foo matches 'foo' and 'foo/'
-      : `${match}(?=$|\\/$)`
-  ],
-
-  // trailing wildcard
-  [
-    /(\^|\\\/)?\\\*$/,
-    (_, p1) => {
-      const prefix = p1
-        // '\^':
-        // '/*' does not match EMPTY
-        // '/*' does not match everything
-
-        // '\\\/':
-        // 'abc/*' does not match 'abc/'
-        ? `${p1}[^/]+`
-
-        // 'a*' matches 'a'
-        // 'a*' matches 'aa'
-        : '[^/]*'
-
-      return `${prefix}(?=$|\\/$)`
-    }
-  ],
-]
-
-// A simple cache, because an ignore rule only has only one certain meaning
-const regexCache = Object.create(null)
-
-// @param {pattern}
-const makeRegex = (pattern, ignoreCase) => {
-  let source = regexCache[pattern]
-
-  if (!source) {
-    source = REPLACERS.reduce(
-      (prev, current) => prev.replace(current[0], current[1].bind(pattern)),
-      pattern
-    )
-    regexCache[pattern] = source
-  }
-
-  return ignoreCase
-    ? new RegExp(source, 'i')
-    : new RegExp(source)
-}
-
-const isString = subject => typeof subject === 'string'
-
-// > A blank line matches no files, so it can serve as a separator for readability.
-const checkPattern = pattern => pattern
-  && isString(pattern)
-  && !REGEX_TEST_BLANK_LINE.test(pattern)
-
-  // > A line starting with # serves as a comment.
-  && pattern.indexOf('#') !== 0
-
-const splitPattern = pattern => pattern.split(REGEX_SPLITALL_CRLF)
-
-class IgnoreRule {
-  constructor (
-    origin,
-    pattern,
-    negative,
-    regex
-  ) {
-    this.origin = origin
-    this.pattern = pattern
-    this.negative = negative
-    this.regex = regex
-  }
-}
-
-const createRule = (pattern, ignoreCase) => {
-  const origin = pattern
-  let negative = false
-
-  // > An optional prefix "!" which negates the pattern;
-  if (pattern.indexOf('!') === 0) {
-    negative = true
-    pattern = pattern.substr(1)
-  }
-
-  pattern = pattern
-  // > Put a backslash ("\") in front of the first "!" for patterns that
-  // >   begin with a literal "!", for example, `"\!important!.txt"`.
-  .replace(REGEX_REPLACE_LEADING_EXCAPED_EXCLAMATION, '!')
-  // > Put a backslash ("\") in front of the first hash for patterns that
-  // >   begin with a hash.
-  .replace(REGEX_REPLACE_LEADING_EXCAPED_HASH, '#')
-
-  const regex = makeRegex(pattern, ignoreCase)
-
-  return new IgnoreRule(
-    origin,
-    pattern,
-    negative,
-    regex
-  )
-}
-
-const throwError = (message, Ctor) => {
-  throw new Ctor(message)
-}
-
-const checkPath = (path, originalPath, doThrow) => {
-  if (!isString(path)) {
-    return doThrow(
-      `path must be a string, but got \`${originalPath}\``,
-      TypeError
-    )
-  }
-
-  // We don't know if we should ignore EMPTY, so throw
-  if (!path) {
-    return doThrow(`path must not be empty`, TypeError)
-  }
-
-  // Check if it is a relative path
-  if (checkPath.isNotRelative(path)) {
-    const r = '`path.relative()`d'
-    return doThrow(
-      `path should be a ${r} string, but got "${originalPath}"`,
-      RangeError
-    )
-  }
-
-  return true
-}
-
-const isNotRelative = path => REGEX_TEST_INVALID_PATH.test(path)
-
-checkPath.isNotRelative = isNotRelative
-checkPath.convert = p => p
-
-class Ignore {
-  constructor ({
-    ignorecase = true,
-    ignoreCase = ignorecase,
-    allowRelativePaths = false
-  } = {}) {
-    define(this, KEY_IGNORE, true)
-
-    this._rules = []
-    this._ignoreCase = ignoreCase
-    this._allowRelativePaths = allowRelativePaths
-    this._initCache()
-  }
-
-  _initCache () {
-    this._ignoreCache = Object.create(null)
-    this._testCache = Object.create(null)
-  }
-
-  _addPattern (pattern) {
-    // #32
-    if (pattern && pattern[KEY_IGNORE]) {
-      this._rules = this._rules.concat(pattern._rules)
-      this._added = true
-      return
-    }
-
-    if (checkPattern(pattern)) {
-      const rule = createRule(pattern, this._ignoreCase)
-      this._added = true
-      this._rules.push(rule)
-    }
-  }
-
-  // @param {Array<string> | string | Ignore} pattern
-  add (pattern) {
-    this._added = false
-
-    makeArray(
-      isString(pattern)
-        ? splitPattern(pattern)
-        : pattern
-    ).forEach(this._addPattern, this)
-
-    // Some rules have just added to the ignore,
-    // making the behavior changed.
-    if (this._added) {
-      this._initCache()
-    }
-
-    return this
-  }
-
-  // legacy
-  addPattern (pattern) {
-    return this.add(pattern)
-  }
-
-  //          |           ignored : unignored
-  // negative |   0:0   |   0:1   |   1:0   |   1:1
-  // -------- | ------- | ------- | ------- | --------
-  //     0    |  TEST   |  TEST   |  SKIP   |    X
-  //     1    |  TESTIF |  SKIP   |  TEST   |    X
-
-  // - SKIP: always skip
-  // - TEST: always test
-  // - TESTIF: only test if checkUnignored
-  // - X: that never happen
-
-  // @param {boolean} whether should check if the path is unignored,
-  //   setting `checkUnignored` to `false` could reduce additional
-  //   path matching.
-
-  // @returns {TestResult} true if a file is ignored
-  _testOne (path, checkUnignored) {
-    let ignored = false
-    let unignored = false
-
-    this._rules.forEach(rule => {
-      const {negative} = rule
-      if (
-        unignored === negative && ignored !== unignored
-        || negative && !ignored && !unignored && !checkUnignored
-      ) {
-        return
-      }
-
-      const matched = rule.regex.test(path)
-
-      if (matched) {
-        ignored = !negative
-        unignored = negative
-      }
-    })
-
-    return {
-      ignored,
-      unignored
-    }
-  }
-
-  // @returns {TestResult}
-  _test (originalPath, cache, checkUnignored, slices) {
-    const path = originalPath
-      // Supports nullable path
-      && checkPath.convert(originalPath)
-
-    checkPath(
-      path,
-      originalPath,
-      this._allowRelativePaths
-        ? RETURN_FALSE
-        : throwError
-    )
-
-    return this._t(path, cache, checkUnignored, slices)
-  }
-
-  _t (path, cache, checkUnignored, slices) {
-    if (path in cache) {
-      return cache[path]
-    }
-
-    if (!slices) {
-      // path/to/a.js
-      // ['path', 'to', 'a.js']
-      slices = path.split(SLASH)
-    }
-
-    slices.pop()
-
-    // If the path has no parent directory, just test it
-    if (!slices.length) {
-      return cache[path] = this._testOne(path, checkUnignored)
-    }
-
-    const parent = this._t(
-      slices.join(SLASH) + SLASH,
-      cache,
-      checkUnignored,
-      slices
-    )
-
-    // If the path contains a parent directory, check the parent first
-    return cache[path] = parent.ignored
-      // > It is not possible to re-include a file if a parent directory of
-      // >   that file is excluded.
-      ? parent
-      : this._testOne(path, checkUnignored)
-  }
-
-  ignores (path) {
-    return this._test(path, this._ignoreCache, false).ignored
-  }
-
-  createFilter () {
-    return path => !this.ignores(path)
-  }
-
-  filter (paths) {
-    return makeArray(paths).filter(this.createFilter())
-  }
-
-  // @returns {TestResult}
-  test (path) {
-    return this._test(path, this._testCache, true)
-  }
-}
-
-const factory = options => new Ignore(options)
-
-const isPathValid = path =>
-  checkPath(path && checkPath.convert(path), path, RETURN_FALSE)
-
-factory.isPathValid = isPathValid
-
-// Fixes typescript
-factory.default = factory
-
-module.exports = factory
-
-// Windows
-// --------------------------------------------------------------
-/* istanbul ignore if  */
-if (
-  // Detect `process` so that it can run in browsers.
-  typeof process !== 'undefined'
-  && (
-    process.env && process.env.IGNORE_TEST_WIN32
-    || process.platform === 'win32'
-  )
-) {
-  /* eslint no-control-regex: "off" */
-  const makePosix = str => /^\\\\\?\\/.test(str)
-  || /["<>|\u0000-\u001F]+/u.test(str)
-    ? str
-    : str.replace(/\\/g, '/')
-
-  checkPath.convert = makePosix
-
-  // 'C:\\foo'     <- 'C:\\foo' has been converted to 'C:/'
-  // 'd:\\foo'
-  const REGIX_IS_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i
-  checkPath.isNotRelative = path =>
-    REGIX_IS_WINDOWS_PATH_ABSOLUTE.test(path)
-    || isNotRelative(path)
-}
 
 
 /***/ }),
@@ -43677,6 +43213,631 @@ exports.default = parseProxyResponse;
 
 /***/ }),
 
+/***/ 4777:
+/***/ ((module) => {
+
+// A simple implementation of make-array
+function makeArray (subject) {
+  return Array.isArray(subject)
+    ? subject
+    : [subject]
+}
+
+const EMPTY = ''
+const SPACE = ' '
+const ESCAPE = '\\'
+const REGEX_TEST_BLANK_LINE = /^\s+$/
+const REGEX_INVALID_TRAILING_BACKSLASH = /(?:[^\\]|^)\\$/
+const REGEX_REPLACE_LEADING_EXCAPED_EXCLAMATION = /^\\!/
+const REGEX_REPLACE_LEADING_EXCAPED_HASH = /^\\#/
+const REGEX_SPLITALL_CRLF = /\r?\n/g
+// /foo,
+// ./foo,
+// ../foo,
+// .
+// ..
+const REGEX_TEST_INVALID_PATH = /^\.*\/|^\.+$/
+
+const SLASH = '/'
+
+// Do not use ternary expression here, since "istanbul ignore next" is buggy
+let TMP_KEY_IGNORE = 'node-ignore'
+/* istanbul ignore else */
+if (typeof Symbol !== 'undefined') {
+  TMP_KEY_IGNORE = Symbol.for('node-ignore')
+}
+const KEY_IGNORE = TMP_KEY_IGNORE
+
+const define = (object, key, value) =>
+  Object.defineProperty(object, key, {value})
+
+const REGEX_REGEXP_RANGE = /([0-z])-([0-z])/g
+
+const RETURN_FALSE = () => false
+
+// Sanitize the range of a regular expression
+// The cases are complicated, see test cases for details
+const sanitizeRange = range => range.replace(
+  REGEX_REGEXP_RANGE,
+  (match, from, to) => from.charCodeAt(0) <= to.charCodeAt(0)
+    ? match
+    // Invalid range (out of order) which is ok for gitignore rules but
+    //   fatal for JavaScript regular expression, so eliminate it.
+    : EMPTY
+)
+
+// See fixtures #59
+const cleanRangeBackSlash = slashes => {
+  const {length} = slashes
+  return slashes.slice(0, length - length % 2)
+}
+
+// > If the pattern ends with a slash,
+// > it is removed for the purpose of the following description,
+// > but it would only find a match with a directory.
+// > In other words, foo/ will match a directory foo and paths underneath it,
+// > but will not match a regular file or a symbolic link foo
+// >  (this is consistent with the way how pathspec works in general in Git).
+// '`foo/`' will not match regular file '`foo`' or symbolic link '`foo`'
+// -> ignore-rules will not deal with it, because it costs extra `fs.stat` call
+//      you could use option `mark: true` with `glob`
+
+// '`foo/`' should not continue with the '`..`'
+const REPLACERS = [
+
+  // > Trailing spaces are ignored unless they are quoted with backslash ("\")
+  [
+    // (a\ ) -> (a )
+    // (a  ) -> (a)
+    // (a \ ) -> (a  )
+    /\\?\s+$/,
+    match => match.indexOf('\\') === 0
+      ? SPACE
+      : EMPTY
+  ],
+
+  // replace (\ ) with ' '
+  [
+    /\\\s/g,
+    () => SPACE
+  ],
+
+  // Escape metacharacters
+  // which is written down by users but means special for regular expressions.
+
+  // > There are 12 characters with special meanings:
+  // > - the backslash \,
+  // > - the caret ^,
+  // > - the dollar sign $,
+  // > - the period or dot .,
+  // > - the vertical bar or pipe symbol |,
+  // > - the question mark ?,
+  // > - the asterisk or star *,
+  // > - the plus sign +,
+  // > - the opening parenthesis (,
+  // > - the closing parenthesis ),
+  // > - and the opening square bracket [,
+  // > - the opening curly brace {,
+  // > These special characters are often called "metacharacters".
+  [
+    /[\\$.|*+(){^]/g,
+    match => `\\${match}`
+  ],
+
+  [
+    // > a question mark (?) matches a single character
+    /(?!\\)\?/g,
+    () => '[^/]'
+  ],
+
+  // leading slash
+  [
+
+    // > A leading slash matches the beginning of the pathname.
+    // > For example, "/*.c" matches "cat-file.c" but not "mozilla-sha1/sha1.c".
+    // A leading slash matches the beginning of the pathname
+    /^\//,
+    () => '^'
+  ],
+
+  // replace special metacharacter slash after the leading slash
+  [
+    /\//g,
+    () => '\\/'
+  ],
+
+  [
+    // > A leading "**" followed by a slash means match in all directories.
+    // > For example, "**/foo" matches file or directory "foo" anywhere,
+    // > the same as pattern "foo".
+    // > "**/foo/bar" matches file or directory "bar" anywhere that is directly
+    // >   under directory "foo".
+    // Notice that the '*'s have been replaced as '\\*'
+    /^\^*\\\*\\\*\\\//,
+
+    // '**/foo' <-> 'foo'
+    () => '^(?:.*\\/)?'
+  ],
+
+  // starting
+  [
+    // there will be no leading '/'
+    //   (which has been replaced by section "leading slash")
+    // If starts with '**', adding a '^' to the regular expression also works
+    /^(?=[^^])/,
+    function startingReplacer () {
+      // If has a slash `/` at the beginning or middle
+      return !/\/(?!$)/.test(this)
+        // > Prior to 2.22.1
+        // > If the pattern does not contain a slash /,
+        // >   Git treats it as a shell glob pattern
+        // Actually, if there is only a trailing slash,
+        //   git also treats it as a shell glob pattern
+
+        // After 2.22.1 (compatible but clearer)
+        // > If there is a separator at the beginning or middle (or both)
+        // > of the pattern, then the pattern is relative to the directory
+        // > level of the particular .gitignore file itself.
+        // > Otherwise the pattern may also match at any level below
+        // > the .gitignore level.
+        ? '(?:^|\\/)'
+
+        // > Otherwise, Git treats the pattern as a shell glob suitable for
+        // >   consumption by fnmatch(3)
+        : '^'
+    }
+  ],
+
+  // two globstars
+  [
+    // Use lookahead assertions so that we could match more than one `'/**'`
+    /\\\/\\\*\\\*(?=\\\/|$)/g,
+
+    // Zero, one or several directories
+    // should not use '*', or it will be replaced by the next replacer
+
+    // Check if it is not the last `'/**'`
+    (_, index, str) => index + 6 < str.length
+
+      // case: /**/
+      // > A slash followed by two consecutive asterisks then a slash matches
+      // >   zero or more directories.
+      // > For example, "a/**/b" matches "a/b", "a/x/b", "a/x/y/b" and so on.
+      // '/**/'
+      ? '(?:\\/[^\\/]+)*'
+
+      // case: /**
+      // > A trailing `"/**"` matches everything inside.
+
+      // #21: everything inside but it should not include the current folder
+      : '\\/.+'
+  ],
+
+  // normal intermediate wildcards
+  [
+    // Never replace escaped '*'
+    // ignore rule '\*' will match the path '*'
+
+    // 'abc.*/' -> go
+    // 'abc.*'  -> skip this rule,
+    //    coz trailing single wildcard will be handed by [trailing wildcard]
+    /(^|[^\\]+)(\\\*)+(?=.+)/g,
+
+    // '*.js' matches '.js'
+    // '*.js' doesn't match 'abc'
+    (_, p1, p2) => {
+      // 1.
+      // > An asterisk "*" matches anything except a slash.
+      // 2.
+      // > Other consecutive asterisks are considered regular asterisks
+      // > and will match according to the previous rules.
+      const unescaped = p2.replace(/\\\*/g, '[^\\/]*')
+      return p1 + unescaped
+    }
+  ],
+
+  [
+    // unescape, revert step 3 except for back slash
+    // For example, if a user escape a '\\*',
+    // after step 3, the result will be '\\\\\\*'
+    /\\\\\\(?=[$.|*+(){^])/g,
+    () => ESCAPE
+  ],
+
+  [
+    // '\\\\' -> '\\'
+    /\\\\/g,
+    () => ESCAPE
+  ],
+
+  [
+    // > The range notation, e.g. [a-zA-Z],
+    // > can be used to match one of the characters in a range.
+
+    // `\` is escaped by step 3
+    /(\\)?\[([^\]/]*?)(\\*)($|\])/g,
+    (match, leadEscape, range, endEscape, close) => leadEscape === ESCAPE
+      // '\\[bar]' -> '\\\\[bar\\]'
+      ? `\\[${range}${cleanRangeBackSlash(endEscape)}${close}`
+      : close === ']'
+        ? endEscape.length % 2 === 0
+          // A normal case, and it is a range notation
+          // '[bar]'
+          // '[bar\\\\]'
+          ? `[${sanitizeRange(range)}${endEscape}]`
+          // Invalid range notaton
+          // '[bar\\]' -> '[bar\\\\]'
+          : '[]'
+        : '[]'
+  ],
+
+  // ending
+  [
+    // 'js' will not match 'js.'
+    // 'ab' will not match 'abc'
+    /(?:[^*])$/,
+
+    // WTF!
+    // https://git-scm.com/docs/gitignore
+    // changes in [2.22.1](https://git-scm.com/docs/gitignore/2.22.1)
+    // which re-fixes #24, #38
+
+    // > If there is a separator at the end of the pattern then the pattern
+    // > will only match directories, otherwise the pattern can match both
+    // > files and directories.
+
+    // 'js*' will not match 'a.js'
+    // 'js/' will not match 'a.js'
+    // 'js' will match 'a.js' and 'a.js/'
+    match => /\/$/.test(match)
+      // foo/ will not match 'foo'
+      ? `${match}$`
+      // foo matches 'foo' and 'foo/'
+      : `${match}(?=$|\\/$)`
+  ],
+
+  // trailing wildcard
+  [
+    /(\^|\\\/)?\\\*$/,
+    (_, p1) => {
+      const prefix = p1
+        // '\^':
+        // '/*' does not match EMPTY
+        // '/*' does not match everything
+
+        // '\\\/':
+        // 'abc/*' does not match 'abc/'
+        ? `${p1}[^/]+`
+
+        // 'a*' matches 'a'
+        // 'a*' matches 'aa'
+        : '[^/]*'
+
+      return `${prefix}(?=$|\\/$)`
+    }
+  ],
+]
+
+// A simple cache, because an ignore rule only has only one certain meaning
+const regexCache = Object.create(null)
+
+// @param {pattern}
+const makeRegex = (pattern, ignoreCase) => {
+  let source = regexCache[pattern]
+
+  if (!source) {
+    source = REPLACERS.reduce(
+      (prev, current) => prev.replace(current[0], current[1].bind(pattern)),
+      pattern
+    )
+    regexCache[pattern] = source
+  }
+
+  return ignoreCase
+    ? new RegExp(source, 'i')
+    : new RegExp(source)
+}
+
+const isString = subject => typeof subject === 'string'
+
+// > A blank line matches no files, so it can serve as a separator for readability.
+const checkPattern = pattern => pattern
+  && isString(pattern)
+  && !REGEX_TEST_BLANK_LINE.test(pattern)
+  && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern)
+
+  // > A line starting with # serves as a comment.
+  && pattern.indexOf('#') !== 0
+
+const splitPattern = pattern => pattern.split(REGEX_SPLITALL_CRLF)
+
+class IgnoreRule {
+  constructor (
+    origin,
+    pattern,
+    negative,
+    regex
+  ) {
+    this.origin = origin
+    this.pattern = pattern
+    this.negative = negative
+    this.regex = regex
+  }
+}
+
+const createRule = (pattern, ignoreCase) => {
+  const origin = pattern
+  let negative = false
+
+  // > An optional prefix "!" which negates the pattern;
+  if (pattern.indexOf('!') === 0) {
+    negative = true
+    pattern = pattern.substr(1)
+  }
+
+  pattern = pattern
+  // > Put a backslash ("\") in front of the first "!" for patterns that
+  // >   begin with a literal "!", for example, `"\!important!.txt"`.
+  .replace(REGEX_REPLACE_LEADING_EXCAPED_EXCLAMATION, '!')
+  // > Put a backslash ("\") in front of the first hash for patterns that
+  // >   begin with a hash.
+  .replace(REGEX_REPLACE_LEADING_EXCAPED_HASH, '#')
+
+  const regex = makeRegex(pattern, ignoreCase)
+
+  return new IgnoreRule(
+    origin,
+    pattern,
+    negative,
+    regex
+  )
+}
+
+const throwError = (message, Ctor) => {
+  throw new Ctor(message)
+}
+
+const checkPath = (path, originalPath, doThrow) => {
+  if (!isString(path)) {
+    return doThrow(
+      `path must be a string, but got \`${originalPath}\``,
+      TypeError
+    )
+  }
+
+  // We don't know if we should ignore EMPTY, so throw
+  if (!path) {
+    return doThrow(`path must not be empty`, TypeError)
+  }
+
+  // Check if it is a relative path
+  if (checkPath.isNotRelative(path)) {
+    const r = '`path.relative()`d'
+    return doThrow(
+      `path should be a ${r} string, but got "${originalPath}"`,
+      RangeError
+    )
+  }
+
+  return true
+}
+
+const isNotRelative = path => REGEX_TEST_INVALID_PATH.test(path)
+
+checkPath.isNotRelative = isNotRelative
+checkPath.convert = p => p
+
+class Ignore {
+  constructor ({
+    ignorecase = true,
+    ignoreCase = ignorecase,
+    allowRelativePaths = false
+  } = {}) {
+    define(this, KEY_IGNORE, true)
+
+    this._rules = []
+    this._ignoreCase = ignoreCase
+    this._allowRelativePaths = allowRelativePaths
+    this._initCache()
+  }
+
+  _initCache () {
+    this._ignoreCache = Object.create(null)
+    this._testCache = Object.create(null)
+  }
+
+  _addPattern (pattern) {
+    // #32
+    if (pattern && pattern[KEY_IGNORE]) {
+      this._rules = this._rules.concat(pattern._rules)
+      this._added = true
+      return
+    }
+
+    if (checkPattern(pattern)) {
+      const rule = createRule(pattern, this._ignoreCase)
+      this._added = true
+      this._rules.push(rule)
+    }
+  }
+
+  // @param {Array<string> | string | Ignore} pattern
+  add (pattern) {
+    this._added = false
+
+    makeArray(
+      isString(pattern)
+        ? splitPattern(pattern)
+        : pattern
+    ).forEach(this._addPattern, this)
+
+    // Some rules have just added to the ignore,
+    // making the behavior changed.
+    if (this._added) {
+      this._initCache()
+    }
+
+    return this
+  }
+
+  // legacy
+  addPattern (pattern) {
+    return this.add(pattern)
+  }
+
+  //          |           ignored : unignored
+  // negative |   0:0   |   0:1   |   1:0   |   1:1
+  // -------- | ------- | ------- | ------- | --------
+  //     0    |  TEST   |  TEST   |  SKIP   |    X
+  //     1    |  TESTIF |  SKIP   |  TEST   |    X
+
+  // - SKIP: always skip
+  // - TEST: always test
+  // - TESTIF: only test if checkUnignored
+  // - X: that never happen
+
+  // @param {boolean} whether should check if the path is unignored,
+  //   setting `checkUnignored` to `false` could reduce additional
+  //   path matching.
+
+  // @returns {TestResult} true if a file is ignored
+  _testOne (path, checkUnignored) {
+    let ignored = false
+    let unignored = false
+
+    this._rules.forEach(rule => {
+      const {negative} = rule
+      if (
+        unignored === negative && ignored !== unignored
+        || negative && !ignored && !unignored && !checkUnignored
+      ) {
+        return
+      }
+
+      const matched = rule.regex.test(path)
+
+      if (matched) {
+        ignored = !negative
+        unignored = negative
+      }
+    })
+
+    return {
+      ignored,
+      unignored
+    }
+  }
+
+  // @returns {TestResult}
+  _test (originalPath, cache, checkUnignored, slices) {
+    const path = originalPath
+      // Supports nullable path
+      && checkPath.convert(originalPath)
+
+    checkPath(
+      path,
+      originalPath,
+      this._allowRelativePaths
+        ? RETURN_FALSE
+        : throwError
+    )
+
+    return this._t(path, cache, checkUnignored, slices)
+  }
+
+  _t (path, cache, checkUnignored, slices) {
+    if (path in cache) {
+      return cache[path]
+    }
+
+    if (!slices) {
+      // path/to/a.js
+      // ['path', 'to', 'a.js']
+      slices = path.split(SLASH)
+    }
+
+    slices.pop()
+
+    // If the path has no parent directory, just test it
+    if (!slices.length) {
+      return cache[path] = this._testOne(path, checkUnignored)
+    }
+
+    const parent = this._t(
+      slices.join(SLASH) + SLASH,
+      cache,
+      checkUnignored,
+      slices
+    )
+
+    // If the path contains a parent directory, check the parent first
+    return cache[path] = parent.ignored
+      // > It is not possible to re-include a file if a parent directory of
+      // >   that file is excluded.
+      ? parent
+      : this._testOne(path, checkUnignored)
+  }
+
+  ignores (path) {
+    return this._test(path, this._ignoreCache, false).ignored
+  }
+
+  createFilter () {
+    return path => !this.ignores(path)
+  }
+
+  filter (paths) {
+    return makeArray(paths).filter(this.createFilter())
+  }
+
+  // @returns {TestResult}
+  test (path) {
+    return this._test(path, this._testCache, true)
+  }
+}
+
+const factory = options => new Ignore(options)
+
+const isPathValid = path =>
+  checkPath(path && checkPath.convert(path), path, RETURN_FALSE)
+
+factory.isPathValid = isPathValid
+
+// Fixes typescript
+factory.default = factory
+
+module.exports = factory
+
+// Windows
+// --------------------------------------------------------------
+/* istanbul ignore if */
+if (
+  // Detect `process` so that it can run in browsers.
+  typeof process !== 'undefined'
+  && (
+    process.env && process.env.IGNORE_TEST_WIN32
+    || process.platform === 'win32'
+  )
+) {
+  /* eslint no-control-regex: "off" */
+  const makePosix = str => /^\\\\\?\\/.test(str)
+  || /["<>|\u0000-\u001F]+/u.test(str)
+    ? str
+    : str.replace(/\\/g, '/')
+
+  checkPath.convert = makePosix
+
+  // 'C:\\foo'     <- 'C:\\foo' has been converted to 'C:/'
+  // 'd:\\foo'
+  const REGIX_IS_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i
+  checkPath.isNotRelative = path =>
+    REGIX_IS_WINDOWS_PATH_ABSOLUTE.test(path)
+    || isNotRelative(path)
+}
+
+
+/***/ }),
+
 /***/ 2527:
 /***/ ((module) => {
 
@@ -43909,8 +44070,128 @@ module.exports = function isExtglob(str) {
 
 var isExtglob = __nccwpck_require__(6435);
 var chars = { '{': '}', '(': ')', '[': ']'};
-var strictRegex = /\\(.)|(^!|\*|[\].+)]\?|\[[^\\\]]+\]|\{[^\\}]+\}|\(\?[:!=][^\\)]+\)|\([^|]+\|[^\\)]+\))/;
-var relaxedRegex = /\\(.)|(^!|[*?{}()[\]]|\(\?)/;
+var strictCheck = function(str) {
+  if (str[0] === '!') {
+    return true;
+  }
+  var index = 0;
+  var pipeIndex = -2;
+  var closeSquareIndex = -2;
+  var closeCurlyIndex = -2;
+  var closeParenIndex = -2;
+  var backSlashIndex = -2;
+  while (index < str.length) {
+    if (str[index] === '*') {
+      return true;
+    }
+
+    if (str[index + 1] === '?' && /[\].+)]/.test(str[index])) {
+      return true;
+    }
+
+    if (closeSquareIndex !== -1 && str[index] === '[' && str[index + 1] !== ']') {
+      if (closeSquareIndex < index) {
+        closeSquareIndex = str.indexOf(']', index);
+      }
+      if (closeSquareIndex > index) {
+        if (backSlashIndex === -1 || backSlashIndex > closeSquareIndex) {
+          return true;
+        }
+        backSlashIndex = str.indexOf('\\', index);
+        if (backSlashIndex === -1 || backSlashIndex > closeSquareIndex) {
+          return true;
+        }
+      }
+    }
+
+    if (closeCurlyIndex !== -1 && str[index] === '{' && str[index + 1] !== '}') {
+      closeCurlyIndex = str.indexOf('}', index);
+      if (closeCurlyIndex > index) {
+        backSlashIndex = str.indexOf('\\', index);
+        if (backSlashIndex === -1 || backSlashIndex > closeCurlyIndex) {
+          return true;
+        }
+      }
+    }
+
+    if (closeParenIndex !== -1 && str[index] === '(' && str[index + 1] === '?' && /[:!=]/.test(str[index + 2]) && str[index + 3] !== ')') {
+      closeParenIndex = str.indexOf(')', index);
+      if (closeParenIndex > index) {
+        backSlashIndex = str.indexOf('\\', index);
+        if (backSlashIndex === -1 || backSlashIndex > closeParenIndex) {
+          return true;
+        }
+      }
+    }
+
+    if (pipeIndex !== -1 && str[index] === '(' && str[index + 1] !== '|') {
+      if (pipeIndex < index) {
+        pipeIndex = str.indexOf('|', index);
+      }
+      if (pipeIndex !== -1 && str[pipeIndex + 1] !== ')') {
+        closeParenIndex = str.indexOf(')', pipeIndex);
+        if (closeParenIndex > pipeIndex) {
+          backSlashIndex = str.indexOf('\\', pipeIndex);
+          if (backSlashIndex === -1 || backSlashIndex > closeParenIndex) {
+            return true;
+          }
+        }
+      }
+    }
+
+    if (str[index] === '\\') {
+      var open = str[index + 1];
+      index += 2;
+      var close = chars[open];
+
+      if (close) {
+        var n = str.indexOf(close, index);
+        if (n !== -1) {
+          index = n + 1;
+        }
+      }
+
+      if (str[index] === '!') {
+        return true;
+      }
+    } else {
+      index++;
+    }
+  }
+  return false;
+};
+
+var relaxedCheck = function(str) {
+  if (str[0] === '!') {
+    return true;
+  }
+  var index = 0;
+  while (index < str.length) {
+    if (/[*?{}()[\]]/.test(str[index])) {
+      return true;
+    }
+
+    if (str[index] === '\\') {
+      var open = str[index + 1];
+      index += 2;
+      var close = chars[open];
+
+      if (close) {
+        var n = str.indexOf(close, index);
+        if (n !== -1) {
+          index = n + 1;
+        }
+      }
+
+      if (str[index] === '!') {
+        return true;
+      }
+    } else {
+      index++;
+    }
+  }
+  return false;
+};
 
 module.exports = function isGlob(str, options) {
   if (typeof str !== 'string' || str === '') {
@@ -43921,32 +44202,14 @@ module.exports = function isGlob(str, options) {
     return true;
   }
 
-  var regex = strictRegex;
-  var match;
+  var check = strictCheck;
 
-  // optionally relax regex
+  // optionally relax check
   if (options && options.strict === false) {
-    regex = relaxedRegex;
+    check = relaxedCheck;
   }
 
-  while ((match = regex.exec(str))) {
-    if (match[2]) return true;
-    var idx = match.index + match[0].length;
-
-    // if an open bracket/brace/paren is escaped,
-    // set the index to the next closing character
-    var open = match[1];
-    var close = open ? chars[open] : null;
-    if (open && close) {
-      var n = str.indexOf(close, idx);
-      if (n !== -1) {
-        idx = n + 1;
-      }
-    }
-
-    str = str.slice(idx);
-  }
-  return false;
+  return check(str);
 };
 
 
@@ -45911,7 +46174,7 @@ module.exports = LRUCache
 const fs = __nccwpck_require__(5747);
 const path = __nccwpck_require__(5622);
 const {promisify} = __nccwpck_require__(1669);
-const semver = __nccwpck_require__(3689);
+const semver = __nccwpck_require__(5911);
 
 const useNativeRecursiveOption = semver.satisfies(process.version, '>=10.12.0');
 
@@ -46063,1609 +46326,6 @@ module.exports.sync = (input, options) => {
 
 	return make(path.resolve(input));
 };
-
-
-/***/ }),
-
-/***/ 3689:
-/***/ ((module, exports) => {
-
-exports = module.exports = SemVer
-
-var debug
-/* istanbul ignore next */
-if (typeof process === 'object' &&
-    process.env &&
-    process.env.NODE_DEBUG &&
-    /\bsemver\b/i.test(process.env.NODE_DEBUG)) {
-  debug = function () {
-    var args = Array.prototype.slice.call(arguments, 0)
-    args.unshift('SEMVER')
-    console.log.apply(console, args)
-  }
-} else {
-  debug = function () {}
-}
-
-// Note: this is the semver.org version of the spec that it implements
-// Not necessarily the package version of this code.
-exports.SEMVER_SPEC_VERSION = '2.0.0'
-
-var MAX_LENGTH = 256
-var MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER ||
-  /* istanbul ignore next */ 9007199254740991
-
-// Max safe segment length for coercion.
-var MAX_SAFE_COMPONENT_LENGTH = 16
-
-// The actual regexps go on exports.re
-var re = exports.re = []
-var src = exports.src = []
-var t = exports.tokens = {}
-var R = 0
-
-function tok (n) {
-  t[n] = R++
-}
-
-// The following Regular Expressions can be used for tokenizing,
-// validating, and parsing SemVer version strings.
-
-// ## Numeric Identifier
-// A single `0`, or a non-zero digit followed by zero or more digits.
-
-tok('NUMERICIDENTIFIER')
-src[t.NUMERICIDENTIFIER] = '0|[1-9]\\d*'
-tok('NUMERICIDENTIFIERLOOSE')
-src[t.NUMERICIDENTIFIERLOOSE] = '[0-9]+'
-
-// ## Non-numeric Identifier
-// Zero or more digits, followed by a letter or hyphen, and then zero or
-// more letters, digits, or hyphens.
-
-tok('NONNUMERICIDENTIFIER')
-src[t.NONNUMERICIDENTIFIER] = '\\d*[a-zA-Z-][a-zA-Z0-9-]*'
-
-// ## Main Version
-// Three dot-separated numeric identifiers.
-
-tok('MAINVERSION')
-src[t.MAINVERSION] = '(' + src[t.NUMERICIDENTIFIER] + ')\\.' +
-                   '(' + src[t.NUMERICIDENTIFIER] + ')\\.' +
-                   '(' + src[t.NUMERICIDENTIFIER] + ')'
-
-tok('MAINVERSIONLOOSE')
-src[t.MAINVERSIONLOOSE] = '(' + src[t.NUMERICIDENTIFIERLOOSE] + ')\\.' +
-                        '(' + src[t.NUMERICIDENTIFIERLOOSE] + ')\\.' +
-                        '(' + src[t.NUMERICIDENTIFIERLOOSE] + ')'
-
-// ## Pre-release Version Identifier
-// A numeric identifier, or a non-numeric identifier.
-
-tok('PRERELEASEIDENTIFIER')
-src[t.PRERELEASEIDENTIFIER] = '(?:' + src[t.NUMERICIDENTIFIER] +
-                            '|' + src[t.NONNUMERICIDENTIFIER] + ')'
-
-tok('PRERELEASEIDENTIFIERLOOSE')
-src[t.PRERELEASEIDENTIFIERLOOSE] = '(?:' + src[t.NUMERICIDENTIFIERLOOSE] +
-                                 '|' + src[t.NONNUMERICIDENTIFIER] + ')'
-
-// ## Pre-release Version
-// Hyphen, followed by one or more dot-separated pre-release version
-// identifiers.
-
-tok('PRERELEASE')
-src[t.PRERELEASE] = '(?:-(' + src[t.PRERELEASEIDENTIFIER] +
-                  '(?:\\.' + src[t.PRERELEASEIDENTIFIER] + ')*))'
-
-tok('PRERELEASELOOSE')
-src[t.PRERELEASELOOSE] = '(?:-?(' + src[t.PRERELEASEIDENTIFIERLOOSE] +
-                       '(?:\\.' + src[t.PRERELEASEIDENTIFIERLOOSE] + ')*))'
-
-// ## Build Metadata Identifier
-// Any combination of digits, letters, or hyphens.
-
-tok('BUILDIDENTIFIER')
-src[t.BUILDIDENTIFIER] = '[0-9A-Za-z-]+'
-
-// ## Build Metadata
-// Plus sign, followed by one or more period-separated build metadata
-// identifiers.
-
-tok('BUILD')
-src[t.BUILD] = '(?:\\+(' + src[t.BUILDIDENTIFIER] +
-             '(?:\\.' + src[t.BUILDIDENTIFIER] + ')*))'
-
-// ## Full Version String
-// A main version, followed optionally by a pre-release version and
-// build metadata.
-
-// Note that the only major, minor, patch, and pre-release sections of
-// the version string are capturing groups.  The build metadata is not a
-// capturing group, because it should not ever be used in version
-// comparison.
-
-tok('FULL')
-tok('FULLPLAIN')
-src[t.FULLPLAIN] = 'v?' + src[t.MAINVERSION] +
-                  src[t.PRERELEASE] + '?' +
-                  src[t.BUILD] + '?'
-
-src[t.FULL] = '^' + src[t.FULLPLAIN] + '$'
-
-// like full, but allows v1.2.3 and =1.2.3, which people do sometimes.
-// also, 1.0.0alpha1 (prerelease without the hyphen) which is pretty
-// common in the npm registry.
-tok('LOOSEPLAIN')
-src[t.LOOSEPLAIN] = '[v=\\s]*' + src[t.MAINVERSIONLOOSE] +
-                  src[t.PRERELEASELOOSE] + '?' +
-                  src[t.BUILD] + '?'
-
-tok('LOOSE')
-src[t.LOOSE] = '^' + src[t.LOOSEPLAIN] + '$'
-
-tok('GTLT')
-src[t.GTLT] = '((?:<|>)?=?)'
-
-// Something like "2.*" or "1.2.x".
-// Note that "x.x" is a valid xRange identifer, meaning "any version"
-// Only the first item is strictly required.
-tok('XRANGEIDENTIFIERLOOSE')
-src[t.XRANGEIDENTIFIERLOOSE] = src[t.NUMERICIDENTIFIERLOOSE] + '|x|X|\\*'
-tok('XRANGEIDENTIFIER')
-src[t.XRANGEIDENTIFIER] = src[t.NUMERICIDENTIFIER] + '|x|X|\\*'
-
-tok('XRANGEPLAIN')
-src[t.XRANGEPLAIN] = '[v=\\s]*(' + src[t.XRANGEIDENTIFIER] + ')' +
-                   '(?:\\.(' + src[t.XRANGEIDENTIFIER] + ')' +
-                   '(?:\\.(' + src[t.XRANGEIDENTIFIER] + ')' +
-                   '(?:' + src[t.PRERELEASE] + ')?' +
-                   src[t.BUILD] + '?' +
-                   ')?)?'
-
-tok('XRANGEPLAINLOOSE')
-src[t.XRANGEPLAINLOOSE] = '[v=\\s]*(' + src[t.XRANGEIDENTIFIERLOOSE] + ')' +
-                        '(?:\\.(' + src[t.XRANGEIDENTIFIERLOOSE] + ')' +
-                        '(?:\\.(' + src[t.XRANGEIDENTIFIERLOOSE] + ')' +
-                        '(?:' + src[t.PRERELEASELOOSE] + ')?' +
-                        src[t.BUILD] + '?' +
-                        ')?)?'
-
-tok('XRANGE')
-src[t.XRANGE] = '^' + src[t.GTLT] + '\\s*' + src[t.XRANGEPLAIN] + '$'
-tok('XRANGELOOSE')
-src[t.XRANGELOOSE] = '^' + src[t.GTLT] + '\\s*' + src[t.XRANGEPLAINLOOSE] + '$'
-
-// Coercion.
-// Extract anything that could conceivably be a part of a valid semver
-tok('COERCE')
-src[t.COERCE] = '(^|[^\\d])' +
-              '(\\d{1,' + MAX_SAFE_COMPONENT_LENGTH + '})' +
-              '(?:\\.(\\d{1,' + MAX_SAFE_COMPONENT_LENGTH + '}))?' +
-              '(?:\\.(\\d{1,' + MAX_SAFE_COMPONENT_LENGTH + '}))?' +
-              '(?:$|[^\\d])'
-tok('COERCERTL')
-re[t.COERCERTL] = new RegExp(src[t.COERCE], 'g')
-
-// Tilde ranges.
-// Meaning is "reasonably at or greater than"
-tok('LONETILDE')
-src[t.LONETILDE] = '(?:~>?)'
-
-tok('TILDETRIM')
-src[t.TILDETRIM] = '(\\s*)' + src[t.LONETILDE] + '\\s+'
-re[t.TILDETRIM] = new RegExp(src[t.TILDETRIM], 'g')
-var tildeTrimReplace = '$1~'
-
-tok('TILDE')
-src[t.TILDE] = '^' + src[t.LONETILDE] + src[t.XRANGEPLAIN] + '$'
-tok('TILDELOOSE')
-src[t.TILDELOOSE] = '^' + src[t.LONETILDE] + src[t.XRANGEPLAINLOOSE] + '$'
-
-// Caret ranges.
-// Meaning is "at least and backwards compatible with"
-tok('LONECARET')
-src[t.LONECARET] = '(?:\\^)'
-
-tok('CARETTRIM')
-src[t.CARETTRIM] = '(\\s*)' + src[t.LONECARET] + '\\s+'
-re[t.CARETTRIM] = new RegExp(src[t.CARETTRIM], 'g')
-var caretTrimReplace = '$1^'
-
-tok('CARET')
-src[t.CARET] = '^' + src[t.LONECARET] + src[t.XRANGEPLAIN] + '$'
-tok('CARETLOOSE')
-src[t.CARETLOOSE] = '^' + src[t.LONECARET] + src[t.XRANGEPLAINLOOSE] + '$'
-
-// A simple gt/lt/eq thing, or just "" to indicate "any version"
-tok('COMPARATORLOOSE')
-src[t.COMPARATORLOOSE] = '^' + src[t.GTLT] + '\\s*(' + src[t.LOOSEPLAIN] + ')$|^$'
-tok('COMPARATOR')
-src[t.COMPARATOR] = '^' + src[t.GTLT] + '\\s*(' + src[t.FULLPLAIN] + ')$|^$'
-
-// An expression to strip any whitespace between the gtlt and the thing
-// it modifies, so that `> 1.2.3` ==> `>1.2.3`
-tok('COMPARATORTRIM')
-src[t.COMPARATORTRIM] = '(\\s*)' + src[t.GTLT] +
-                      '\\s*(' + src[t.LOOSEPLAIN] + '|' + src[t.XRANGEPLAIN] + ')'
-
-// this one has to use the /g flag
-re[t.COMPARATORTRIM] = new RegExp(src[t.COMPARATORTRIM], 'g')
-var comparatorTrimReplace = '$1$2$3'
-
-// Something like `1.2.3 - 1.2.4`
-// Note that these all use the loose form, because they'll be
-// checked against either the strict or loose comparator form
-// later.
-tok('HYPHENRANGE')
-src[t.HYPHENRANGE] = '^\\s*(' + src[t.XRANGEPLAIN] + ')' +
-                   '\\s+-\\s+' +
-                   '(' + src[t.XRANGEPLAIN] + ')' +
-                   '\\s*$'
-
-tok('HYPHENRANGELOOSE')
-src[t.HYPHENRANGELOOSE] = '^\\s*(' + src[t.XRANGEPLAINLOOSE] + ')' +
-                        '\\s+-\\s+' +
-                        '(' + src[t.XRANGEPLAINLOOSE] + ')' +
-                        '\\s*$'
-
-// Star ranges basically just allow anything at all.
-tok('STAR')
-src[t.STAR] = '(<|>)?=?\\s*\\*'
-
-// Compile to actual regexp objects.
-// All are flag-free, unless they were created above with a flag.
-for (var i = 0; i < R; i++) {
-  debug(i, src[i])
-  if (!re[i]) {
-    re[i] = new RegExp(src[i])
-  }
-}
-
-exports.parse = parse
-function parse (version, options) {
-  if (!options || typeof options !== 'object') {
-    options = {
-      loose: !!options,
-      includePrerelease: false
-    }
-  }
-
-  if (version instanceof SemVer) {
-    return version
-  }
-
-  if (typeof version !== 'string') {
-    return null
-  }
-
-  if (version.length > MAX_LENGTH) {
-    return null
-  }
-
-  var r = options.loose ? re[t.LOOSE] : re[t.FULL]
-  if (!r.test(version)) {
-    return null
-  }
-
-  try {
-    return new SemVer(version, options)
-  } catch (er) {
-    return null
-  }
-}
-
-exports.valid = valid
-function valid (version, options) {
-  var v = parse(version, options)
-  return v ? v.version : null
-}
-
-exports.clean = clean
-function clean (version, options) {
-  var s = parse(version.trim().replace(/^[=v]+/, ''), options)
-  return s ? s.version : null
-}
-
-exports.SemVer = SemVer
-
-function SemVer (version, options) {
-  if (!options || typeof options !== 'object') {
-    options = {
-      loose: !!options,
-      includePrerelease: false
-    }
-  }
-  if (version instanceof SemVer) {
-    if (version.loose === options.loose) {
-      return version
-    } else {
-      version = version.version
-    }
-  } else if (typeof version !== 'string') {
-    throw new TypeError('Invalid Version: ' + version)
-  }
-
-  if (version.length > MAX_LENGTH) {
-    throw new TypeError('version is longer than ' + MAX_LENGTH + ' characters')
-  }
-
-  if (!(this instanceof SemVer)) {
-    return new SemVer(version, options)
-  }
-
-  debug('SemVer', version, options)
-  this.options = options
-  this.loose = !!options.loose
-
-  var m = version.trim().match(options.loose ? re[t.LOOSE] : re[t.FULL])
-
-  if (!m) {
-    throw new TypeError('Invalid Version: ' + version)
-  }
-
-  this.raw = version
-
-  // these are actually numbers
-  this.major = +m[1]
-  this.minor = +m[2]
-  this.patch = +m[3]
-
-  if (this.major > MAX_SAFE_INTEGER || this.major < 0) {
-    throw new TypeError('Invalid major version')
-  }
-
-  if (this.minor > MAX_SAFE_INTEGER || this.minor < 0) {
-    throw new TypeError('Invalid minor version')
-  }
-
-  if (this.patch > MAX_SAFE_INTEGER || this.patch < 0) {
-    throw new TypeError('Invalid patch version')
-  }
-
-  // numberify any prerelease numeric ids
-  if (!m[4]) {
-    this.prerelease = []
-  } else {
-    this.prerelease = m[4].split('.').map(function (id) {
-      if (/^[0-9]+$/.test(id)) {
-        var num = +id
-        if (num >= 0 && num < MAX_SAFE_INTEGER) {
-          return num
-        }
-      }
-      return id
-    })
-  }
-
-  this.build = m[5] ? m[5].split('.') : []
-  this.format()
-}
-
-SemVer.prototype.format = function () {
-  this.version = this.major + '.' + this.minor + '.' + this.patch
-  if (this.prerelease.length) {
-    this.version += '-' + this.prerelease.join('.')
-  }
-  return this.version
-}
-
-SemVer.prototype.toString = function () {
-  return this.version
-}
-
-SemVer.prototype.compare = function (other) {
-  debug('SemVer.compare', this.version, this.options, other)
-  if (!(other instanceof SemVer)) {
-    other = new SemVer(other, this.options)
-  }
-
-  return this.compareMain(other) || this.comparePre(other)
-}
-
-SemVer.prototype.compareMain = function (other) {
-  if (!(other instanceof SemVer)) {
-    other = new SemVer(other, this.options)
-  }
-
-  return compareIdentifiers(this.major, other.major) ||
-         compareIdentifiers(this.minor, other.minor) ||
-         compareIdentifiers(this.patch, other.patch)
-}
-
-SemVer.prototype.comparePre = function (other) {
-  if (!(other instanceof SemVer)) {
-    other = new SemVer(other, this.options)
-  }
-
-  // NOT having a prerelease is > having one
-  if (this.prerelease.length && !other.prerelease.length) {
-    return -1
-  } else if (!this.prerelease.length && other.prerelease.length) {
-    return 1
-  } else if (!this.prerelease.length && !other.prerelease.length) {
-    return 0
-  }
-
-  var i = 0
-  do {
-    var a = this.prerelease[i]
-    var b = other.prerelease[i]
-    debug('prerelease compare', i, a, b)
-    if (a === undefined && b === undefined) {
-      return 0
-    } else if (b === undefined) {
-      return 1
-    } else if (a === undefined) {
-      return -1
-    } else if (a === b) {
-      continue
-    } else {
-      return compareIdentifiers(a, b)
-    }
-  } while (++i)
-}
-
-SemVer.prototype.compareBuild = function (other) {
-  if (!(other instanceof SemVer)) {
-    other = new SemVer(other, this.options)
-  }
-
-  var i = 0
-  do {
-    var a = this.build[i]
-    var b = other.build[i]
-    debug('prerelease compare', i, a, b)
-    if (a === undefined && b === undefined) {
-      return 0
-    } else if (b === undefined) {
-      return 1
-    } else if (a === undefined) {
-      return -1
-    } else if (a === b) {
-      continue
-    } else {
-      return compareIdentifiers(a, b)
-    }
-  } while (++i)
-}
-
-// preminor will bump the version up to the next minor release, and immediately
-// down to pre-release. premajor and prepatch work the same way.
-SemVer.prototype.inc = function (release, identifier) {
-  switch (release) {
-    case 'premajor':
-      this.prerelease.length = 0
-      this.patch = 0
-      this.minor = 0
-      this.major++
-      this.inc('pre', identifier)
-      break
-    case 'preminor':
-      this.prerelease.length = 0
-      this.patch = 0
-      this.minor++
-      this.inc('pre', identifier)
-      break
-    case 'prepatch':
-      // If this is already a prerelease, it will bump to the next version
-      // drop any prereleases that might already exist, since they are not
-      // relevant at this point.
-      this.prerelease.length = 0
-      this.inc('patch', identifier)
-      this.inc('pre', identifier)
-      break
-    // If the input is a non-prerelease version, this acts the same as
-    // prepatch.
-    case 'prerelease':
-      if (this.prerelease.length === 0) {
-        this.inc('patch', identifier)
-      }
-      this.inc('pre', identifier)
-      break
-
-    case 'major':
-      // If this is a pre-major version, bump up to the same major version.
-      // Otherwise increment major.
-      // 1.0.0-5 bumps to 1.0.0
-      // 1.1.0 bumps to 2.0.0
-      if (this.minor !== 0 ||
-          this.patch !== 0 ||
-          this.prerelease.length === 0) {
-        this.major++
-      }
-      this.minor = 0
-      this.patch = 0
-      this.prerelease = []
-      break
-    case 'minor':
-      // If this is a pre-minor version, bump up to the same minor version.
-      // Otherwise increment minor.
-      // 1.2.0-5 bumps to 1.2.0
-      // 1.2.1 bumps to 1.3.0
-      if (this.patch !== 0 || this.prerelease.length === 0) {
-        this.minor++
-      }
-      this.patch = 0
-      this.prerelease = []
-      break
-    case 'patch':
-      // If this is not a pre-release version, it will increment the patch.
-      // If it is a pre-release it will bump up to the same patch version.
-      // 1.2.0-5 patches to 1.2.0
-      // 1.2.0 patches to 1.2.1
-      if (this.prerelease.length === 0) {
-        this.patch++
-      }
-      this.prerelease = []
-      break
-    // This probably shouldn't be used publicly.
-    // 1.0.0 "pre" would become 1.0.0-0 which is the wrong direction.
-    case 'pre':
-      if (this.prerelease.length === 0) {
-        this.prerelease = [0]
-      } else {
-        var i = this.prerelease.length
-        while (--i >= 0) {
-          if (typeof this.prerelease[i] === 'number') {
-            this.prerelease[i]++
-            i = -2
-          }
-        }
-        if (i === -1) {
-          // didn't increment anything
-          this.prerelease.push(0)
-        }
-      }
-      if (identifier) {
-        // 1.2.0-beta.1 bumps to 1.2.0-beta.2,
-        // 1.2.0-beta.fooblz or 1.2.0-beta bumps to 1.2.0-beta.0
-        if (this.prerelease[0] === identifier) {
-          if (isNaN(this.prerelease[1])) {
-            this.prerelease = [identifier, 0]
-          }
-        } else {
-          this.prerelease = [identifier, 0]
-        }
-      }
-      break
-
-    default:
-      throw new Error('invalid increment argument: ' + release)
-  }
-  this.format()
-  this.raw = this.version
-  return this
-}
-
-exports.inc = inc
-function inc (version, release, loose, identifier) {
-  if (typeof (loose) === 'string') {
-    identifier = loose
-    loose = undefined
-  }
-
-  try {
-    return new SemVer(version, loose).inc(release, identifier).version
-  } catch (er) {
-    return null
-  }
-}
-
-exports.diff = diff
-function diff (version1, version2) {
-  if (eq(version1, version2)) {
-    return null
-  } else {
-    var v1 = parse(version1)
-    var v2 = parse(version2)
-    var prefix = ''
-    if (v1.prerelease.length || v2.prerelease.length) {
-      prefix = 'pre'
-      var defaultResult = 'prerelease'
-    }
-    for (var key in v1) {
-      if (key === 'major' || key === 'minor' || key === 'patch') {
-        if (v1[key] !== v2[key]) {
-          return prefix + key
-        }
-      }
-    }
-    return defaultResult // may be undefined
-  }
-}
-
-exports.compareIdentifiers = compareIdentifiers
-
-var numeric = /^[0-9]+$/
-function compareIdentifiers (a, b) {
-  var anum = numeric.test(a)
-  var bnum = numeric.test(b)
-
-  if (anum && bnum) {
-    a = +a
-    b = +b
-  }
-
-  return a === b ? 0
-    : (anum && !bnum) ? -1
-    : (bnum && !anum) ? 1
-    : a < b ? -1
-    : 1
-}
-
-exports.rcompareIdentifiers = rcompareIdentifiers
-function rcompareIdentifiers (a, b) {
-  return compareIdentifiers(b, a)
-}
-
-exports.major = major
-function major (a, loose) {
-  return new SemVer(a, loose).major
-}
-
-exports.minor = minor
-function minor (a, loose) {
-  return new SemVer(a, loose).minor
-}
-
-exports.patch = patch
-function patch (a, loose) {
-  return new SemVer(a, loose).patch
-}
-
-exports.compare = compare
-function compare (a, b, loose) {
-  return new SemVer(a, loose).compare(new SemVer(b, loose))
-}
-
-exports.compareLoose = compareLoose
-function compareLoose (a, b) {
-  return compare(a, b, true)
-}
-
-exports.compareBuild = compareBuild
-function compareBuild (a, b, loose) {
-  var versionA = new SemVer(a, loose)
-  var versionB = new SemVer(b, loose)
-  return versionA.compare(versionB) || versionA.compareBuild(versionB)
-}
-
-exports.rcompare = rcompare
-function rcompare (a, b, loose) {
-  return compare(b, a, loose)
-}
-
-exports.sort = sort
-function sort (list, loose) {
-  return list.sort(function (a, b) {
-    return exports.compareBuild(a, b, loose)
-  })
-}
-
-exports.rsort = rsort
-function rsort (list, loose) {
-  return list.sort(function (a, b) {
-    return exports.compareBuild(b, a, loose)
-  })
-}
-
-exports.gt = gt
-function gt (a, b, loose) {
-  return compare(a, b, loose) > 0
-}
-
-exports.lt = lt
-function lt (a, b, loose) {
-  return compare(a, b, loose) < 0
-}
-
-exports.eq = eq
-function eq (a, b, loose) {
-  return compare(a, b, loose) === 0
-}
-
-exports.neq = neq
-function neq (a, b, loose) {
-  return compare(a, b, loose) !== 0
-}
-
-exports.gte = gte
-function gte (a, b, loose) {
-  return compare(a, b, loose) >= 0
-}
-
-exports.lte = lte
-function lte (a, b, loose) {
-  return compare(a, b, loose) <= 0
-}
-
-exports.cmp = cmp
-function cmp (a, op, b, loose) {
-  switch (op) {
-    case '===':
-      if (typeof a === 'object')
-        a = a.version
-      if (typeof b === 'object')
-        b = b.version
-      return a === b
-
-    case '!==':
-      if (typeof a === 'object')
-        a = a.version
-      if (typeof b === 'object')
-        b = b.version
-      return a !== b
-
-    case '':
-    case '=':
-    case '==':
-      return eq(a, b, loose)
-
-    case '!=':
-      return neq(a, b, loose)
-
-    case '>':
-      return gt(a, b, loose)
-
-    case '>=':
-      return gte(a, b, loose)
-
-    case '<':
-      return lt(a, b, loose)
-
-    case '<=':
-      return lte(a, b, loose)
-
-    default:
-      throw new TypeError('Invalid operator: ' + op)
-  }
-}
-
-exports.Comparator = Comparator
-function Comparator (comp, options) {
-  if (!options || typeof options !== 'object') {
-    options = {
-      loose: !!options,
-      includePrerelease: false
-    }
-  }
-
-  if (comp instanceof Comparator) {
-    if (comp.loose === !!options.loose) {
-      return comp
-    } else {
-      comp = comp.value
-    }
-  }
-
-  if (!(this instanceof Comparator)) {
-    return new Comparator(comp, options)
-  }
-
-  debug('comparator', comp, options)
-  this.options = options
-  this.loose = !!options.loose
-  this.parse(comp)
-
-  if (this.semver === ANY) {
-    this.value = ''
-  } else {
-    this.value = this.operator + this.semver.version
-  }
-
-  debug('comp', this)
-}
-
-var ANY = {}
-Comparator.prototype.parse = function (comp) {
-  var r = this.options.loose ? re[t.COMPARATORLOOSE] : re[t.COMPARATOR]
-  var m = comp.match(r)
-
-  if (!m) {
-    throw new TypeError('Invalid comparator: ' + comp)
-  }
-
-  this.operator = m[1] !== undefined ? m[1] : ''
-  if (this.operator === '=') {
-    this.operator = ''
-  }
-
-  // if it literally is just '>' or '' then allow anything.
-  if (!m[2]) {
-    this.semver = ANY
-  } else {
-    this.semver = new SemVer(m[2], this.options.loose)
-  }
-}
-
-Comparator.prototype.toString = function () {
-  return this.value
-}
-
-Comparator.prototype.test = function (version) {
-  debug('Comparator.test', version, this.options.loose)
-
-  if (this.semver === ANY || version === ANY) {
-    return true
-  }
-
-  if (typeof version === 'string') {
-    try {
-      version = new SemVer(version, this.options)
-    } catch (er) {
-      return false
-    }
-  }
-
-  return cmp(version, this.operator, this.semver, this.options)
-}
-
-Comparator.prototype.intersects = function (comp, options) {
-  if (!(comp instanceof Comparator)) {
-    throw new TypeError('a Comparator is required')
-  }
-
-  if (!options || typeof options !== 'object') {
-    options = {
-      loose: !!options,
-      includePrerelease: false
-    }
-  }
-
-  var rangeTmp
-
-  if (this.operator === '') {
-    if (this.value === '') {
-      return true
-    }
-    rangeTmp = new Range(comp.value, options)
-    return satisfies(this.value, rangeTmp, options)
-  } else if (comp.operator === '') {
-    if (comp.value === '') {
-      return true
-    }
-    rangeTmp = new Range(this.value, options)
-    return satisfies(comp.semver, rangeTmp, options)
-  }
-
-  var sameDirectionIncreasing =
-    (this.operator === '>=' || this.operator === '>') &&
-    (comp.operator === '>=' || comp.operator === '>')
-  var sameDirectionDecreasing =
-    (this.operator === '<=' || this.operator === '<') &&
-    (comp.operator === '<=' || comp.operator === '<')
-  var sameSemVer = this.semver.version === comp.semver.version
-  var differentDirectionsInclusive =
-    (this.operator === '>=' || this.operator === '<=') &&
-    (comp.operator === '>=' || comp.operator === '<=')
-  var oppositeDirectionsLessThan =
-    cmp(this.semver, '<', comp.semver, options) &&
-    ((this.operator === '>=' || this.operator === '>') &&
-    (comp.operator === '<=' || comp.operator === '<'))
-  var oppositeDirectionsGreaterThan =
-    cmp(this.semver, '>', comp.semver, options) &&
-    ((this.operator === '<=' || this.operator === '<') &&
-    (comp.operator === '>=' || comp.operator === '>'))
-
-  return sameDirectionIncreasing || sameDirectionDecreasing ||
-    (sameSemVer && differentDirectionsInclusive) ||
-    oppositeDirectionsLessThan || oppositeDirectionsGreaterThan
-}
-
-exports.Range = Range
-function Range (range, options) {
-  if (!options || typeof options !== 'object') {
-    options = {
-      loose: !!options,
-      includePrerelease: false
-    }
-  }
-
-  if (range instanceof Range) {
-    if (range.loose === !!options.loose &&
-        range.includePrerelease === !!options.includePrerelease) {
-      return range
-    } else {
-      return new Range(range.raw, options)
-    }
-  }
-
-  if (range instanceof Comparator) {
-    return new Range(range.value, options)
-  }
-
-  if (!(this instanceof Range)) {
-    return new Range(range, options)
-  }
-
-  this.options = options
-  this.loose = !!options.loose
-  this.includePrerelease = !!options.includePrerelease
-
-  // First, split based on boolean or ||
-  this.raw = range
-  this.set = range.split(/\s*\|\|\s*/).map(function (range) {
-    return this.parseRange(range.trim())
-  }, this).filter(function (c) {
-    // throw out any that are not relevant for whatever reason
-    return c.length
-  })
-
-  if (!this.set.length) {
-    throw new TypeError('Invalid SemVer Range: ' + range)
-  }
-
-  this.format()
-}
-
-Range.prototype.format = function () {
-  this.range = this.set.map(function (comps) {
-    return comps.join(' ').trim()
-  }).join('||').trim()
-  return this.range
-}
-
-Range.prototype.toString = function () {
-  return this.range
-}
-
-Range.prototype.parseRange = function (range) {
-  var loose = this.options.loose
-  range = range.trim()
-  // `1.2.3 - 1.2.4` => `>=1.2.3 <=1.2.4`
-  var hr = loose ? re[t.HYPHENRANGELOOSE] : re[t.HYPHENRANGE]
-  range = range.replace(hr, hyphenReplace)
-  debug('hyphen replace', range)
-  // `> 1.2.3 < 1.2.5` => `>1.2.3 <1.2.5`
-  range = range.replace(re[t.COMPARATORTRIM], comparatorTrimReplace)
-  debug('comparator trim', range, re[t.COMPARATORTRIM])
-
-  // `~ 1.2.3` => `~1.2.3`
-  range = range.replace(re[t.TILDETRIM], tildeTrimReplace)
-
-  // `^ 1.2.3` => `^1.2.3`
-  range = range.replace(re[t.CARETTRIM], caretTrimReplace)
-
-  // normalize spaces
-  range = range.split(/\s+/).join(' ')
-
-  // At this point, the range is completely trimmed and
-  // ready to be split into comparators.
-
-  var compRe = loose ? re[t.COMPARATORLOOSE] : re[t.COMPARATOR]
-  var set = range.split(' ').map(function (comp) {
-    return parseComparator(comp, this.options)
-  }, this).join(' ').split(/\s+/)
-  if (this.options.loose) {
-    // in loose mode, throw out any that are not valid comparators
-    set = set.filter(function (comp) {
-      return !!comp.match(compRe)
-    })
-  }
-  set = set.map(function (comp) {
-    return new Comparator(comp, this.options)
-  }, this)
-
-  return set
-}
-
-Range.prototype.intersects = function (range, options) {
-  if (!(range instanceof Range)) {
-    throw new TypeError('a Range is required')
-  }
-
-  return this.set.some(function (thisComparators) {
-    return (
-      isSatisfiable(thisComparators, options) &&
-      range.set.some(function (rangeComparators) {
-        return (
-          isSatisfiable(rangeComparators, options) &&
-          thisComparators.every(function (thisComparator) {
-            return rangeComparators.every(function (rangeComparator) {
-              return thisComparator.intersects(rangeComparator, options)
-            })
-          })
-        )
-      })
-    )
-  })
-}
-
-// take a set of comparators and determine whether there
-// exists a version which can satisfy it
-function isSatisfiable (comparators, options) {
-  var result = true
-  var remainingComparators = comparators.slice()
-  var testComparator = remainingComparators.pop()
-
-  while (result && remainingComparators.length) {
-    result = remainingComparators.every(function (otherComparator) {
-      return testComparator.intersects(otherComparator, options)
-    })
-
-    testComparator = remainingComparators.pop()
-  }
-
-  return result
-}
-
-// Mostly just for testing and legacy API reasons
-exports.toComparators = toComparators
-function toComparators (range, options) {
-  return new Range(range, options).set.map(function (comp) {
-    return comp.map(function (c) {
-      return c.value
-    }).join(' ').trim().split(' ')
-  })
-}
-
-// comprised of xranges, tildes, stars, and gtlt's at this point.
-// already replaced the hyphen ranges
-// turn into a set of JUST comparators.
-function parseComparator (comp, options) {
-  debug('comp', comp, options)
-  comp = replaceCarets(comp, options)
-  debug('caret', comp)
-  comp = replaceTildes(comp, options)
-  debug('tildes', comp)
-  comp = replaceXRanges(comp, options)
-  debug('xrange', comp)
-  comp = replaceStars(comp, options)
-  debug('stars', comp)
-  return comp
-}
-
-function isX (id) {
-  return !id || id.toLowerCase() === 'x' || id === '*'
-}
-
-// ~, ~> --> * (any, kinda silly)
-// ~2, ~2.x, ~2.x.x, ~>2, ~>2.x ~>2.x.x --> >=2.0.0 <3.0.0
-// ~2.0, ~2.0.x, ~>2.0, ~>2.0.x --> >=2.0.0 <2.1.0
-// ~1.2, ~1.2.x, ~>1.2, ~>1.2.x --> >=1.2.0 <1.3.0
-// ~1.2.3, ~>1.2.3 --> >=1.2.3 <1.3.0
-// ~1.2.0, ~>1.2.0 --> >=1.2.0 <1.3.0
-function replaceTildes (comp, options) {
-  return comp.trim().split(/\s+/).map(function (comp) {
-    return replaceTilde(comp, options)
-  }).join(' ')
-}
-
-function replaceTilde (comp, options) {
-  var r = options.loose ? re[t.TILDELOOSE] : re[t.TILDE]
-  return comp.replace(r, function (_, M, m, p, pr) {
-    debug('tilde', comp, _, M, m, p, pr)
-    var ret
-
-    if (isX(M)) {
-      ret = ''
-    } else if (isX(m)) {
-      ret = '>=' + M + '.0.0 <' + (+M + 1) + '.0.0'
-    } else if (isX(p)) {
-      // ~1.2 == >=1.2.0 <1.3.0
-      ret = '>=' + M + '.' + m + '.0 <' + M + '.' + (+m + 1) + '.0'
-    } else if (pr) {
-      debug('replaceTilde pr', pr)
-      ret = '>=' + M + '.' + m + '.' + p + '-' + pr +
-            ' <' + M + '.' + (+m + 1) + '.0'
-    } else {
-      // ~1.2.3 == >=1.2.3 <1.3.0
-      ret = '>=' + M + '.' + m + '.' + p +
-            ' <' + M + '.' + (+m + 1) + '.0'
-    }
-
-    debug('tilde return', ret)
-    return ret
-  })
-}
-
-// ^ --> * (any, kinda silly)
-// ^2, ^2.x, ^2.x.x --> >=2.0.0 <3.0.0
-// ^2.0, ^2.0.x --> >=2.0.0 <3.0.0
-// ^1.2, ^1.2.x --> >=1.2.0 <2.0.0
-// ^1.2.3 --> >=1.2.3 <2.0.0
-// ^1.2.0 --> >=1.2.0 <2.0.0
-function replaceCarets (comp, options) {
-  return comp.trim().split(/\s+/).map(function (comp) {
-    return replaceCaret(comp, options)
-  }).join(' ')
-}
-
-function replaceCaret (comp, options) {
-  debug('caret', comp, options)
-  var r = options.loose ? re[t.CARETLOOSE] : re[t.CARET]
-  return comp.replace(r, function (_, M, m, p, pr) {
-    debug('caret', comp, _, M, m, p, pr)
-    var ret
-
-    if (isX(M)) {
-      ret = ''
-    } else if (isX(m)) {
-      ret = '>=' + M + '.0.0 <' + (+M + 1) + '.0.0'
-    } else if (isX(p)) {
-      if (M === '0') {
-        ret = '>=' + M + '.' + m + '.0 <' + M + '.' + (+m + 1) + '.0'
-      } else {
-        ret = '>=' + M + '.' + m + '.0 <' + (+M + 1) + '.0.0'
-      }
-    } else if (pr) {
-      debug('replaceCaret pr', pr)
-      if (M === '0') {
-        if (m === '0') {
-          ret = '>=' + M + '.' + m + '.' + p + '-' + pr +
-                ' <' + M + '.' + m + '.' + (+p + 1)
-        } else {
-          ret = '>=' + M + '.' + m + '.' + p + '-' + pr +
-                ' <' + M + '.' + (+m + 1) + '.0'
-        }
-      } else {
-        ret = '>=' + M + '.' + m + '.' + p + '-' + pr +
-              ' <' + (+M + 1) + '.0.0'
-      }
-    } else {
-      debug('no pr')
-      if (M === '0') {
-        if (m === '0') {
-          ret = '>=' + M + '.' + m + '.' + p +
-                ' <' + M + '.' + m + '.' + (+p + 1)
-        } else {
-          ret = '>=' + M + '.' + m + '.' + p +
-                ' <' + M + '.' + (+m + 1) + '.0'
-        }
-      } else {
-        ret = '>=' + M + '.' + m + '.' + p +
-              ' <' + (+M + 1) + '.0.0'
-      }
-    }
-
-    debug('caret return', ret)
-    return ret
-  })
-}
-
-function replaceXRanges (comp, options) {
-  debug('replaceXRanges', comp, options)
-  return comp.split(/\s+/).map(function (comp) {
-    return replaceXRange(comp, options)
-  }).join(' ')
-}
-
-function replaceXRange (comp, options) {
-  comp = comp.trim()
-  var r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE]
-  return comp.replace(r, function (ret, gtlt, M, m, p, pr) {
-    debug('xRange', comp, ret, gtlt, M, m, p, pr)
-    var xM = isX(M)
-    var xm = xM || isX(m)
-    var xp = xm || isX(p)
-    var anyX = xp
-
-    if (gtlt === '=' && anyX) {
-      gtlt = ''
-    }
-
-    // if we're including prereleases in the match, then we need
-    // to fix this to -0, the lowest possible prerelease value
-    pr = options.includePrerelease ? '-0' : ''
-
-    if (xM) {
-      if (gtlt === '>' || gtlt === '<') {
-        // nothing is allowed
-        ret = '<0.0.0-0'
-      } else {
-        // nothing is forbidden
-        ret = '*'
-      }
-    } else if (gtlt && anyX) {
-      // we know patch is an x, because we have any x at all.
-      // replace X with 0
-      if (xm) {
-        m = 0
-      }
-      p = 0
-
-      if (gtlt === '>') {
-        // >1 => >=2.0.0
-        // >1.2 => >=1.3.0
-        // >1.2.3 => >= 1.2.4
-        gtlt = '>='
-        if (xm) {
-          M = +M + 1
-          m = 0
-          p = 0
-        } else {
-          m = +m + 1
-          p = 0
-        }
-      } else if (gtlt === '<=') {
-        // <=0.7.x is actually <0.8.0, since any 0.7.x should
-        // pass.  Similarly, <=7.x is actually <8.0.0, etc.
-        gtlt = '<'
-        if (xm) {
-          M = +M + 1
-        } else {
-          m = +m + 1
-        }
-      }
-
-      ret = gtlt + M + '.' + m + '.' + p + pr
-    } else if (xm) {
-      ret = '>=' + M + '.0.0' + pr + ' <' + (+M + 1) + '.0.0' + pr
-    } else if (xp) {
-      ret = '>=' + M + '.' + m + '.0' + pr +
-        ' <' + M + '.' + (+m + 1) + '.0' + pr
-    }
-
-    debug('xRange return', ret)
-
-    return ret
-  })
-}
-
-// Because * is AND-ed with everything else in the comparator,
-// and '' means "any version", just remove the *s entirely.
-function replaceStars (comp, options) {
-  debug('replaceStars', comp, options)
-  // Looseness is ignored here.  star is always as loose as it gets!
-  return comp.trim().replace(re[t.STAR], '')
-}
-
-// This function is passed to string.replace(re[t.HYPHENRANGE])
-// M, m, patch, prerelease, build
-// 1.2 - 3.4.5 => >=1.2.0 <=3.4.5
-// 1.2.3 - 3.4 => >=1.2.0 <3.5.0 Any 3.4.x will do
-// 1.2 - 3.4 => >=1.2.0 <3.5.0
-function hyphenReplace ($0,
-  from, fM, fm, fp, fpr, fb,
-  to, tM, tm, tp, tpr, tb) {
-  if (isX(fM)) {
-    from = ''
-  } else if (isX(fm)) {
-    from = '>=' + fM + '.0.0'
-  } else if (isX(fp)) {
-    from = '>=' + fM + '.' + fm + '.0'
-  } else {
-    from = '>=' + from
-  }
-
-  if (isX(tM)) {
-    to = ''
-  } else if (isX(tm)) {
-    to = '<' + (+tM + 1) + '.0.0'
-  } else if (isX(tp)) {
-    to = '<' + tM + '.' + (+tm + 1) + '.0'
-  } else if (tpr) {
-    to = '<=' + tM + '.' + tm + '.' + tp + '-' + tpr
-  } else {
-    to = '<=' + to
-  }
-
-  return (from + ' ' + to).trim()
-}
-
-// if ANY of the sets match ALL of its comparators, then pass
-Range.prototype.test = function (version) {
-  if (!version) {
-    return false
-  }
-
-  if (typeof version === 'string') {
-    try {
-      version = new SemVer(version, this.options)
-    } catch (er) {
-      return false
-    }
-  }
-
-  for (var i = 0; i < this.set.length; i++) {
-    if (testSet(this.set[i], version, this.options)) {
-      return true
-    }
-  }
-  return false
-}
-
-function testSet (set, version, options) {
-  for (var i = 0; i < set.length; i++) {
-    if (!set[i].test(version)) {
-      return false
-    }
-  }
-
-  if (version.prerelease.length && !options.includePrerelease) {
-    // Find the set of versions that are allowed to have prereleases
-    // For example, ^1.2.3-pr.1 desugars to >=1.2.3-pr.1 <2.0.0
-    // That should allow `1.2.3-pr.2` to pass.
-    // However, `1.2.4-alpha.notready` should NOT be allowed,
-    // even though it's within the range set by the comparators.
-    for (i = 0; i < set.length; i++) {
-      debug(set[i].semver)
-      if (set[i].semver === ANY) {
-        continue
-      }
-
-      if (set[i].semver.prerelease.length > 0) {
-        var allowed = set[i].semver
-        if (allowed.major === version.major &&
-            allowed.minor === version.minor &&
-            allowed.patch === version.patch) {
-          return true
-        }
-      }
-    }
-
-    // Version has a -pre, but it's not one of the ones we like.
-    return false
-  }
-
-  return true
-}
-
-exports.satisfies = satisfies
-function satisfies (version, range, options) {
-  try {
-    range = new Range(range, options)
-  } catch (er) {
-    return false
-  }
-  return range.test(version)
-}
-
-exports.maxSatisfying = maxSatisfying
-function maxSatisfying (versions, range, options) {
-  var max = null
-  var maxSV = null
-  try {
-    var rangeObj = new Range(range, options)
-  } catch (er) {
-    return null
-  }
-  versions.forEach(function (v) {
-    if (rangeObj.test(v)) {
-      // satisfies(v, range, options)
-      if (!max || maxSV.compare(v) === -1) {
-        // compare(max, v, true)
-        max = v
-        maxSV = new SemVer(max, options)
-      }
-    }
-  })
-  return max
-}
-
-exports.minSatisfying = minSatisfying
-function minSatisfying (versions, range, options) {
-  var min = null
-  var minSV = null
-  try {
-    var rangeObj = new Range(range, options)
-  } catch (er) {
-    return null
-  }
-  versions.forEach(function (v) {
-    if (rangeObj.test(v)) {
-      // satisfies(v, range, options)
-      if (!min || minSV.compare(v) === 1) {
-        // compare(min, v, true)
-        min = v
-        minSV = new SemVer(min, options)
-      }
-    }
-  })
-  return min
-}
-
-exports.minVersion = minVersion
-function minVersion (range, loose) {
-  range = new Range(range, loose)
-
-  var minver = new SemVer('0.0.0')
-  if (range.test(minver)) {
-    return minver
-  }
-
-  minver = new SemVer('0.0.0-0')
-  if (range.test(minver)) {
-    return minver
-  }
-
-  minver = null
-  for (var i = 0; i < range.set.length; ++i) {
-    var comparators = range.set[i]
-
-    comparators.forEach(function (comparator) {
-      // Clone to avoid manipulating the comparator's semver object.
-      var compver = new SemVer(comparator.semver.version)
-      switch (comparator.operator) {
-        case '>':
-          if (compver.prerelease.length === 0) {
-            compver.patch++
-          } else {
-            compver.prerelease.push(0)
-          }
-          compver.raw = compver.format()
-          /* fallthrough */
-        case '':
-        case '>=':
-          if (!minver || gt(minver, compver)) {
-            minver = compver
-          }
-          break
-        case '<':
-        case '<=':
-          /* Ignore maximum versions */
-          break
-        /* istanbul ignore next */
-        default:
-          throw new Error('Unexpected operation: ' + comparator.operator)
-      }
-    })
-  }
-
-  if (minver && range.test(minver)) {
-    return minver
-  }
-
-  return null
-}
-
-exports.validRange = validRange
-function validRange (range, options) {
-  try {
-    // Return '*' instead of '' so that truthiness works.
-    // This will throw if it's invalid anyway
-    return new Range(range, options).range || '*'
-  } catch (er) {
-    return null
-  }
-}
-
-// Determine if version is less than all the versions possible in the range
-exports.ltr = ltr
-function ltr (version, range, options) {
-  return outside(version, range, '<', options)
-}
-
-// Determine if version is greater than all the versions possible in the range.
-exports.gtr = gtr
-function gtr (version, range, options) {
-  return outside(version, range, '>', options)
-}
-
-exports.outside = outside
-function outside (version, range, hilo, options) {
-  version = new SemVer(version, options)
-  range = new Range(range, options)
-
-  var gtfn, ltefn, ltfn, comp, ecomp
-  switch (hilo) {
-    case '>':
-      gtfn = gt
-      ltefn = lte
-      ltfn = lt
-      comp = '>'
-      ecomp = '>='
-      break
-    case '<':
-      gtfn = lt
-      ltefn = gte
-      ltfn = gt
-      comp = '<'
-      ecomp = '<='
-      break
-    default:
-      throw new TypeError('Must provide a hilo val of "<" or ">"')
-  }
-
-  // If it satisifes the range it is not outside
-  if (satisfies(version, range, options)) {
-    return false
-  }
-
-  // From now on, variable terms are as if we're in "gtr" mode.
-  // but note that everything is flipped for the "ltr" function.
-
-  for (var i = 0; i < range.set.length; ++i) {
-    var comparators = range.set[i]
-
-    var high = null
-    var low = null
-
-    comparators.forEach(function (comparator) {
-      if (comparator.semver === ANY) {
-        comparator = new Comparator('>=0.0.0')
-      }
-      high = high || comparator
-      low = low || comparator
-      if (gtfn(comparator.semver, high.semver, options)) {
-        high = comparator
-      } else if (ltfn(comparator.semver, low.semver, options)) {
-        low = comparator
-      }
-    })
-
-    // If the edge version comparator has a operator then our version
-    // isn't outside it
-    if (high.operator === comp || high.operator === ecomp) {
-      return false
-    }
-
-    // If the lowest version comparator has an operator and our version
-    // is less than it then it isn't higher than the range
-    if ((!low.operator || low.operator === comp) &&
-        ltefn(version, low.semver)) {
-      return false
-    } else if (low.operator === ecomp && ltfn(version, low.semver)) {
-      return false
-    }
-  }
-  return true
-}
-
-exports.prerelease = prerelease
-function prerelease (version, options) {
-  var parsed = parse(version, options)
-  return (parsed && parsed.prerelease.length) ? parsed.prerelease : null
-}
-
-exports.intersects = intersects
-function intersects (r1, r2, options) {
-  r1 = new Range(r1, options)
-  r2 = new Range(r2, options)
-  return r1.intersects(r2)
-}
-
-exports.coerce = coerce
-function coerce (version, options) {
-  if (version instanceof SemVer) {
-    return version
-  }
-
-  if (typeof version === 'number') {
-    version = String(version)
-  }
-
-  if (typeof version !== 'string') {
-    return null
-  }
-
-  options = options || {}
-
-  var match = null
-  if (!options.rtl) {
-    match = version.match(re[t.COERCE])
-  } else {
-    // Find the right-most coercible string that does not share
-    // a terminus with a more left-ward coercible string.
-    // Eg, '1.2.3.4' wants to coerce '2.3.4', not '3.4' or '4'
-    //
-    // Walk through the string checking with a /g regexp
-    // Manually set the index so as to pick up overlapping matches.
-    // Stop when we get a match that ends at the string end, since no
-    // coercible string can be more right-ward without the same terminus.
-    var next
-    while ((next = re[t.COERCERTL].exec(version)) &&
-      (!match || match.index + match[0].length !== version.length)
-    ) {
-      if (!match ||
-          next.index + next[0].length !== match.index + match[0].length) {
-        match = next
-      }
-      re[t.COERCERTL].lastIndex = next.index + next[1].length + next[2].length
-    }
-    // leave it in a clean state
-    re[t.COERCERTL].lastIndex = -1
-  }
-
-  if (match === null) {
-    return null
-  }
-
-  return parse(match[2] +
-    '.' + (match[3] || '0') +
-    '.' + (match[4] || '0'), options)
-}
 
 
 /***/ }),
@@ -83638,6 +82298,1609 @@ SafeBuffer.allocUnsafeSlow = function (size) {
 
 /***/ }),
 
+/***/ 5911:
+/***/ ((module, exports) => {
+
+exports = module.exports = SemVer
+
+var debug
+/* istanbul ignore next */
+if (typeof process === 'object' &&
+    process.env &&
+    process.env.NODE_DEBUG &&
+    /\bsemver\b/i.test(process.env.NODE_DEBUG)) {
+  debug = function () {
+    var args = Array.prototype.slice.call(arguments, 0)
+    args.unshift('SEMVER')
+    console.log.apply(console, args)
+  }
+} else {
+  debug = function () {}
+}
+
+// Note: this is the semver.org version of the spec that it implements
+// Not necessarily the package version of this code.
+exports.SEMVER_SPEC_VERSION = '2.0.0'
+
+var MAX_LENGTH = 256
+var MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER ||
+  /* istanbul ignore next */ 9007199254740991
+
+// Max safe segment length for coercion.
+var MAX_SAFE_COMPONENT_LENGTH = 16
+
+// The actual regexps go on exports.re
+var re = exports.re = []
+var src = exports.src = []
+var t = exports.tokens = {}
+var R = 0
+
+function tok (n) {
+  t[n] = R++
+}
+
+// The following Regular Expressions can be used for tokenizing,
+// validating, and parsing SemVer version strings.
+
+// ## Numeric Identifier
+// A single `0`, or a non-zero digit followed by zero or more digits.
+
+tok('NUMERICIDENTIFIER')
+src[t.NUMERICIDENTIFIER] = '0|[1-9]\\d*'
+tok('NUMERICIDENTIFIERLOOSE')
+src[t.NUMERICIDENTIFIERLOOSE] = '[0-9]+'
+
+// ## Non-numeric Identifier
+// Zero or more digits, followed by a letter or hyphen, and then zero or
+// more letters, digits, or hyphens.
+
+tok('NONNUMERICIDENTIFIER')
+src[t.NONNUMERICIDENTIFIER] = '\\d*[a-zA-Z-][a-zA-Z0-9-]*'
+
+// ## Main Version
+// Three dot-separated numeric identifiers.
+
+tok('MAINVERSION')
+src[t.MAINVERSION] = '(' + src[t.NUMERICIDENTIFIER] + ')\\.' +
+                   '(' + src[t.NUMERICIDENTIFIER] + ')\\.' +
+                   '(' + src[t.NUMERICIDENTIFIER] + ')'
+
+tok('MAINVERSIONLOOSE')
+src[t.MAINVERSIONLOOSE] = '(' + src[t.NUMERICIDENTIFIERLOOSE] + ')\\.' +
+                        '(' + src[t.NUMERICIDENTIFIERLOOSE] + ')\\.' +
+                        '(' + src[t.NUMERICIDENTIFIERLOOSE] + ')'
+
+// ## Pre-release Version Identifier
+// A numeric identifier, or a non-numeric identifier.
+
+tok('PRERELEASEIDENTIFIER')
+src[t.PRERELEASEIDENTIFIER] = '(?:' + src[t.NUMERICIDENTIFIER] +
+                            '|' + src[t.NONNUMERICIDENTIFIER] + ')'
+
+tok('PRERELEASEIDENTIFIERLOOSE')
+src[t.PRERELEASEIDENTIFIERLOOSE] = '(?:' + src[t.NUMERICIDENTIFIERLOOSE] +
+                                 '|' + src[t.NONNUMERICIDENTIFIER] + ')'
+
+// ## Pre-release Version
+// Hyphen, followed by one or more dot-separated pre-release version
+// identifiers.
+
+tok('PRERELEASE')
+src[t.PRERELEASE] = '(?:-(' + src[t.PRERELEASEIDENTIFIER] +
+                  '(?:\\.' + src[t.PRERELEASEIDENTIFIER] + ')*))'
+
+tok('PRERELEASELOOSE')
+src[t.PRERELEASELOOSE] = '(?:-?(' + src[t.PRERELEASEIDENTIFIERLOOSE] +
+                       '(?:\\.' + src[t.PRERELEASEIDENTIFIERLOOSE] + ')*))'
+
+// ## Build Metadata Identifier
+// Any combination of digits, letters, or hyphens.
+
+tok('BUILDIDENTIFIER')
+src[t.BUILDIDENTIFIER] = '[0-9A-Za-z-]+'
+
+// ## Build Metadata
+// Plus sign, followed by one or more period-separated build metadata
+// identifiers.
+
+tok('BUILD')
+src[t.BUILD] = '(?:\\+(' + src[t.BUILDIDENTIFIER] +
+             '(?:\\.' + src[t.BUILDIDENTIFIER] + ')*))'
+
+// ## Full Version String
+// A main version, followed optionally by a pre-release version and
+// build metadata.
+
+// Note that the only major, minor, patch, and pre-release sections of
+// the version string are capturing groups.  The build metadata is not a
+// capturing group, because it should not ever be used in version
+// comparison.
+
+tok('FULL')
+tok('FULLPLAIN')
+src[t.FULLPLAIN] = 'v?' + src[t.MAINVERSION] +
+                  src[t.PRERELEASE] + '?' +
+                  src[t.BUILD] + '?'
+
+src[t.FULL] = '^' + src[t.FULLPLAIN] + '$'
+
+// like full, but allows v1.2.3 and =1.2.3, which people do sometimes.
+// also, 1.0.0alpha1 (prerelease without the hyphen) which is pretty
+// common in the npm registry.
+tok('LOOSEPLAIN')
+src[t.LOOSEPLAIN] = '[v=\\s]*' + src[t.MAINVERSIONLOOSE] +
+                  src[t.PRERELEASELOOSE] + '?' +
+                  src[t.BUILD] + '?'
+
+tok('LOOSE')
+src[t.LOOSE] = '^' + src[t.LOOSEPLAIN] + '$'
+
+tok('GTLT')
+src[t.GTLT] = '((?:<|>)?=?)'
+
+// Something like "2.*" or "1.2.x".
+// Note that "x.x" is a valid xRange identifer, meaning "any version"
+// Only the first item is strictly required.
+tok('XRANGEIDENTIFIERLOOSE')
+src[t.XRANGEIDENTIFIERLOOSE] = src[t.NUMERICIDENTIFIERLOOSE] + '|x|X|\\*'
+tok('XRANGEIDENTIFIER')
+src[t.XRANGEIDENTIFIER] = src[t.NUMERICIDENTIFIER] + '|x|X|\\*'
+
+tok('XRANGEPLAIN')
+src[t.XRANGEPLAIN] = '[v=\\s]*(' + src[t.XRANGEIDENTIFIER] + ')' +
+                   '(?:\\.(' + src[t.XRANGEIDENTIFIER] + ')' +
+                   '(?:\\.(' + src[t.XRANGEIDENTIFIER] + ')' +
+                   '(?:' + src[t.PRERELEASE] + ')?' +
+                   src[t.BUILD] + '?' +
+                   ')?)?'
+
+tok('XRANGEPLAINLOOSE')
+src[t.XRANGEPLAINLOOSE] = '[v=\\s]*(' + src[t.XRANGEIDENTIFIERLOOSE] + ')' +
+                        '(?:\\.(' + src[t.XRANGEIDENTIFIERLOOSE] + ')' +
+                        '(?:\\.(' + src[t.XRANGEIDENTIFIERLOOSE] + ')' +
+                        '(?:' + src[t.PRERELEASELOOSE] + ')?' +
+                        src[t.BUILD] + '?' +
+                        ')?)?'
+
+tok('XRANGE')
+src[t.XRANGE] = '^' + src[t.GTLT] + '\\s*' + src[t.XRANGEPLAIN] + '$'
+tok('XRANGELOOSE')
+src[t.XRANGELOOSE] = '^' + src[t.GTLT] + '\\s*' + src[t.XRANGEPLAINLOOSE] + '$'
+
+// Coercion.
+// Extract anything that could conceivably be a part of a valid semver
+tok('COERCE')
+src[t.COERCE] = '(^|[^\\d])' +
+              '(\\d{1,' + MAX_SAFE_COMPONENT_LENGTH + '})' +
+              '(?:\\.(\\d{1,' + MAX_SAFE_COMPONENT_LENGTH + '}))?' +
+              '(?:\\.(\\d{1,' + MAX_SAFE_COMPONENT_LENGTH + '}))?' +
+              '(?:$|[^\\d])'
+tok('COERCERTL')
+re[t.COERCERTL] = new RegExp(src[t.COERCE], 'g')
+
+// Tilde ranges.
+// Meaning is "reasonably at or greater than"
+tok('LONETILDE')
+src[t.LONETILDE] = '(?:~>?)'
+
+tok('TILDETRIM')
+src[t.TILDETRIM] = '(\\s*)' + src[t.LONETILDE] + '\\s+'
+re[t.TILDETRIM] = new RegExp(src[t.TILDETRIM], 'g')
+var tildeTrimReplace = '$1~'
+
+tok('TILDE')
+src[t.TILDE] = '^' + src[t.LONETILDE] + src[t.XRANGEPLAIN] + '$'
+tok('TILDELOOSE')
+src[t.TILDELOOSE] = '^' + src[t.LONETILDE] + src[t.XRANGEPLAINLOOSE] + '$'
+
+// Caret ranges.
+// Meaning is "at least and backwards compatible with"
+tok('LONECARET')
+src[t.LONECARET] = '(?:\\^)'
+
+tok('CARETTRIM')
+src[t.CARETTRIM] = '(\\s*)' + src[t.LONECARET] + '\\s+'
+re[t.CARETTRIM] = new RegExp(src[t.CARETTRIM], 'g')
+var caretTrimReplace = '$1^'
+
+tok('CARET')
+src[t.CARET] = '^' + src[t.LONECARET] + src[t.XRANGEPLAIN] + '$'
+tok('CARETLOOSE')
+src[t.CARETLOOSE] = '^' + src[t.LONECARET] + src[t.XRANGEPLAINLOOSE] + '$'
+
+// A simple gt/lt/eq thing, or just "" to indicate "any version"
+tok('COMPARATORLOOSE')
+src[t.COMPARATORLOOSE] = '^' + src[t.GTLT] + '\\s*(' + src[t.LOOSEPLAIN] + ')$|^$'
+tok('COMPARATOR')
+src[t.COMPARATOR] = '^' + src[t.GTLT] + '\\s*(' + src[t.FULLPLAIN] + ')$|^$'
+
+// An expression to strip any whitespace between the gtlt and the thing
+// it modifies, so that `> 1.2.3` ==> `>1.2.3`
+tok('COMPARATORTRIM')
+src[t.COMPARATORTRIM] = '(\\s*)' + src[t.GTLT] +
+                      '\\s*(' + src[t.LOOSEPLAIN] + '|' + src[t.XRANGEPLAIN] + ')'
+
+// this one has to use the /g flag
+re[t.COMPARATORTRIM] = new RegExp(src[t.COMPARATORTRIM], 'g')
+var comparatorTrimReplace = '$1$2$3'
+
+// Something like `1.2.3 - 1.2.4`
+// Note that these all use the loose form, because they'll be
+// checked against either the strict or loose comparator form
+// later.
+tok('HYPHENRANGE')
+src[t.HYPHENRANGE] = '^\\s*(' + src[t.XRANGEPLAIN] + ')' +
+                   '\\s+-\\s+' +
+                   '(' + src[t.XRANGEPLAIN] + ')' +
+                   '\\s*$'
+
+tok('HYPHENRANGELOOSE')
+src[t.HYPHENRANGELOOSE] = '^\\s*(' + src[t.XRANGEPLAINLOOSE] + ')' +
+                        '\\s+-\\s+' +
+                        '(' + src[t.XRANGEPLAINLOOSE] + ')' +
+                        '\\s*$'
+
+// Star ranges basically just allow anything at all.
+tok('STAR')
+src[t.STAR] = '(<|>)?=?\\s*\\*'
+
+// Compile to actual regexp objects.
+// All are flag-free, unless they were created above with a flag.
+for (var i = 0; i < R; i++) {
+  debug(i, src[i])
+  if (!re[i]) {
+    re[i] = new RegExp(src[i])
+  }
+}
+
+exports.parse = parse
+function parse (version, options) {
+  if (!options || typeof options !== 'object') {
+    options = {
+      loose: !!options,
+      includePrerelease: false
+    }
+  }
+
+  if (version instanceof SemVer) {
+    return version
+  }
+
+  if (typeof version !== 'string') {
+    return null
+  }
+
+  if (version.length > MAX_LENGTH) {
+    return null
+  }
+
+  var r = options.loose ? re[t.LOOSE] : re[t.FULL]
+  if (!r.test(version)) {
+    return null
+  }
+
+  try {
+    return new SemVer(version, options)
+  } catch (er) {
+    return null
+  }
+}
+
+exports.valid = valid
+function valid (version, options) {
+  var v = parse(version, options)
+  return v ? v.version : null
+}
+
+exports.clean = clean
+function clean (version, options) {
+  var s = parse(version.trim().replace(/^[=v]+/, ''), options)
+  return s ? s.version : null
+}
+
+exports.SemVer = SemVer
+
+function SemVer (version, options) {
+  if (!options || typeof options !== 'object') {
+    options = {
+      loose: !!options,
+      includePrerelease: false
+    }
+  }
+  if (version instanceof SemVer) {
+    if (version.loose === options.loose) {
+      return version
+    } else {
+      version = version.version
+    }
+  } else if (typeof version !== 'string') {
+    throw new TypeError('Invalid Version: ' + version)
+  }
+
+  if (version.length > MAX_LENGTH) {
+    throw new TypeError('version is longer than ' + MAX_LENGTH + ' characters')
+  }
+
+  if (!(this instanceof SemVer)) {
+    return new SemVer(version, options)
+  }
+
+  debug('SemVer', version, options)
+  this.options = options
+  this.loose = !!options.loose
+
+  var m = version.trim().match(options.loose ? re[t.LOOSE] : re[t.FULL])
+
+  if (!m) {
+    throw new TypeError('Invalid Version: ' + version)
+  }
+
+  this.raw = version
+
+  // these are actually numbers
+  this.major = +m[1]
+  this.minor = +m[2]
+  this.patch = +m[3]
+
+  if (this.major > MAX_SAFE_INTEGER || this.major < 0) {
+    throw new TypeError('Invalid major version')
+  }
+
+  if (this.minor > MAX_SAFE_INTEGER || this.minor < 0) {
+    throw new TypeError('Invalid minor version')
+  }
+
+  if (this.patch > MAX_SAFE_INTEGER || this.patch < 0) {
+    throw new TypeError('Invalid patch version')
+  }
+
+  // numberify any prerelease numeric ids
+  if (!m[4]) {
+    this.prerelease = []
+  } else {
+    this.prerelease = m[4].split('.').map(function (id) {
+      if (/^[0-9]+$/.test(id)) {
+        var num = +id
+        if (num >= 0 && num < MAX_SAFE_INTEGER) {
+          return num
+        }
+      }
+      return id
+    })
+  }
+
+  this.build = m[5] ? m[5].split('.') : []
+  this.format()
+}
+
+SemVer.prototype.format = function () {
+  this.version = this.major + '.' + this.minor + '.' + this.patch
+  if (this.prerelease.length) {
+    this.version += '-' + this.prerelease.join('.')
+  }
+  return this.version
+}
+
+SemVer.prototype.toString = function () {
+  return this.version
+}
+
+SemVer.prototype.compare = function (other) {
+  debug('SemVer.compare', this.version, this.options, other)
+  if (!(other instanceof SemVer)) {
+    other = new SemVer(other, this.options)
+  }
+
+  return this.compareMain(other) || this.comparePre(other)
+}
+
+SemVer.prototype.compareMain = function (other) {
+  if (!(other instanceof SemVer)) {
+    other = new SemVer(other, this.options)
+  }
+
+  return compareIdentifiers(this.major, other.major) ||
+         compareIdentifiers(this.minor, other.minor) ||
+         compareIdentifiers(this.patch, other.patch)
+}
+
+SemVer.prototype.comparePre = function (other) {
+  if (!(other instanceof SemVer)) {
+    other = new SemVer(other, this.options)
+  }
+
+  // NOT having a prerelease is > having one
+  if (this.prerelease.length && !other.prerelease.length) {
+    return -1
+  } else if (!this.prerelease.length && other.prerelease.length) {
+    return 1
+  } else if (!this.prerelease.length && !other.prerelease.length) {
+    return 0
+  }
+
+  var i = 0
+  do {
+    var a = this.prerelease[i]
+    var b = other.prerelease[i]
+    debug('prerelease compare', i, a, b)
+    if (a === undefined && b === undefined) {
+      return 0
+    } else if (b === undefined) {
+      return 1
+    } else if (a === undefined) {
+      return -1
+    } else if (a === b) {
+      continue
+    } else {
+      return compareIdentifiers(a, b)
+    }
+  } while (++i)
+}
+
+SemVer.prototype.compareBuild = function (other) {
+  if (!(other instanceof SemVer)) {
+    other = new SemVer(other, this.options)
+  }
+
+  var i = 0
+  do {
+    var a = this.build[i]
+    var b = other.build[i]
+    debug('prerelease compare', i, a, b)
+    if (a === undefined && b === undefined) {
+      return 0
+    } else if (b === undefined) {
+      return 1
+    } else if (a === undefined) {
+      return -1
+    } else if (a === b) {
+      continue
+    } else {
+      return compareIdentifiers(a, b)
+    }
+  } while (++i)
+}
+
+// preminor will bump the version up to the next minor release, and immediately
+// down to pre-release. premajor and prepatch work the same way.
+SemVer.prototype.inc = function (release, identifier) {
+  switch (release) {
+    case 'premajor':
+      this.prerelease.length = 0
+      this.patch = 0
+      this.minor = 0
+      this.major++
+      this.inc('pre', identifier)
+      break
+    case 'preminor':
+      this.prerelease.length = 0
+      this.patch = 0
+      this.minor++
+      this.inc('pre', identifier)
+      break
+    case 'prepatch':
+      // If this is already a prerelease, it will bump to the next version
+      // drop any prereleases that might already exist, since they are not
+      // relevant at this point.
+      this.prerelease.length = 0
+      this.inc('patch', identifier)
+      this.inc('pre', identifier)
+      break
+    // If the input is a non-prerelease version, this acts the same as
+    // prepatch.
+    case 'prerelease':
+      if (this.prerelease.length === 0) {
+        this.inc('patch', identifier)
+      }
+      this.inc('pre', identifier)
+      break
+
+    case 'major':
+      // If this is a pre-major version, bump up to the same major version.
+      // Otherwise increment major.
+      // 1.0.0-5 bumps to 1.0.0
+      // 1.1.0 bumps to 2.0.0
+      if (this.minor !== 0 ||
+          this.patch !== 0 ||
+          this.prerelease.length === 0) {
+        this.major++
+      }
+      this.minor = 0
+      this.patch = 0
+      this.prerelease = []
+      break
+    case 'minor':
+      // If this is a pre-minor version, bump up to the same minor version.
+      // Otherwise increment minor.
+      // 1.2.0-5 bumps to 1.2.0
+      // 1.2.1 bumps to 1.3.0
+      if (this.patch !== 0 || this.prerelease.length === 0) {
+        this.minor++
+      }
+      this.patch = 0
+      this.prerelease = []
+      break
+    case 'patch':
+      // If this is not a pre-release version, it will increment the patch.
+      // If it is a pre-release it will bump up to the same patch version.
+      // 1.2.0-5 patches to 1.2.0
+      // 1.2.0 patches to 1.2.1
+      if (this.prerelease.length === 0) {
+        this.patch++
+      }
+      this.prerelease = []
+      break
+    // This probably shouldn't be used publicly.
+    // 1.0.0 "pre" would become 1.0.0-0 which is the wrong direction.
+    case 'pre':
+      if (this.prerelease.length === 0) {
+        this.prerelease = [0]
+      } else {
+        var i = this.prerelease.length
+        while (--i >= 0) {
+          if (typeof this.prerelease[i] === 'number') {
+            this.prerelease[i]++
+            i = -2
+          }
+        }
+        if (i === -1) {
+          // didn't increment anything
+          this.prerelease.push(0)
+        }
+      }
+      if (identifier) {
+        // 1.2.0-beta.1 bumps to 1.2.0-beta.2,
+        // 1.2.0-beta.fooblz or 1.2.0-beta bumps to 1.2.0-beta.0
+        if (this.prerelease[0] === identifier) {
+          if (isNaN(this.prerelease[1])) {
+            this.prerelease = [identifier, 0]
+          }
+        } else {
+          this.prerelease = [identifier, 0]
+        }
+      }
+      break
+
+    default:
+      throw new Error('invalid increment argument: ' + release)
+  }
+  this.format()
+  this.raw = this.version
+  return this
+}
+
+exports.inc = inc
+function inc (version, release, loose, identifier) {
+  if (typeof (loose) === 'string') {
+    identifier = loose
+    loose = undefined
+  }
+
+  try {
+    return new SemVer(version, loose).inc(release, identifier).version
+  } catch (er) {
+    return null
+  }
+}
+
+exports.diff = diff
+function diff (version1, version2) {
+  if (eq(version1, version2)) {
+    return null
+  } else {
+    var v1 = parse(version1)
+    var v2 = parse(version2)
+    var prefix = ''
+    if (v1.prerelease.length || v2.prerelease.length) {
+      prefix = 'pre'
+      var defaultResult = 'prerelease'
+    }
+    for (var key in v1) {
+      if (key === 'major' || key === 'minor' || key === 'patch') {
+        if (v1[key] !== v2[key]) {
+          return prefix + key
+        }
+      }
+    }
+    return defaultResult // may be undefined
+  }
+}
+
+exports.compareIdentifiers = compareIdentifiers
+
+var numeric = /^[0-9]+$/
+function compareIdentifiers (a, b) {
+  var anum = numeric.test(a)
+  var bnum = numeric.test(b)
+
+  if (anum && bnum) {
+    a = +a
+    b = +b
+  }
+
+  return a === b ? 0
+    : (anum && !bnum) ? -1
+    : (bnum && !anum) ? 1
+    : a < b ? -1
+    : 1
+}
+
+exports.rcompareIdentifiers = rcompareIdentifiers
+function rcompareIdentifiers (a, b) {
+  return compareIdentifiers(b, a)
+}
+
+exports.major = major
+function major (a, loose) {
+  return new SemVer(a, loose).major
+}
+
+exports.minor = minor
+function minor (a, loose) {
+  return new SemVer(a, loose).minor
+}
+
+exports.patch = patch
+function patch (a, loose) {
+  return new SemVer(a, loose).patch
+}
+
+exports.compare = compare
+function compare (a, b, loose) {
+  return new SemVer(a, loose).compare(new SemVer(b, loose))
+}
+
+exports.compareLoose = compareLoose
+function compareLoose (a, b) {
+  return compare(a, b, true)
+}
+
+exports.compareBuild = compareBuild
+function compareBuild (a, b, loose) {
+  var versionA = new SemVer(a, loose)
+  var versionB = new SemVer(b, loose)
+  return versionA.compare(versionB) || versionA.compareBuild(versionB)
+}
+
+exports.rcompare = rcompare
+function rcompare (a, b, loose) {
+  return compare(b, a, loose)
+}
+
+exports.sort = sort
+function sort (list, loose) {
+  return list.sort(function (a, b) {
+    return exports.compareBuild(a, b, loose)
+  })
+}
+
+exports.rsort = rsort
+function rsort (list, loose) {
+  return list.sort(function (a, b) {
+    return exports.compareBuild(b, a, loose)
+  })
+}
+
+exports.gt = gt
+function gt (a, b, loose) {
+  return compare(a, b, loose) > 0
+}
+
+exports.lt = lt
+function lt (a, b, loose) {
+  return compare(a, b, loose) < 0
+}
+
+exports.eq = eq
+function eq (a, b, loose) {
+  return compare(a, b, loose) === 0
+}
+
+exports.neq = neq
+function neq (a, b, loose) {
+  return compare(a, b, loose) !== 0
+}
+
+exports.gte = gte
+function gte (a, b, loose) {
+  return compare(a, b, loose) >= 0
+}
+
+exports.lte = lte
+function lte (a, b, loose) {
+  return compare(a, b, loose) <= 0
+}
+
+exports.cmp = cmp
+function cmp (a, op, b, loose) {
+  switch (op) {
+    case '===':
+      if (typeof a === 'object')
+        a = a.version
+      if (typeof b === 'object')
+        b = b.version
+      return a === b
+
+    case '!==':
+      if (typeof a === 'object')
+        a = a.version
+      if (typeof b === 'object')
+        b = b.version
+      return a !== b
+
+    case '':
+    case '=':
+    case '==':
+      return eq(a, b, loose)
+
+    case '!=':
+      return neq(a, b, loose)
+
+    case '>':
+      return gt(a, b, loose)
+
+    case '>=':
+      return gte(a, b, loose)
+
+    case '<':
+      return lt(a, b, loose)
+
+    case '<=':
+      return lte(a, b, loose)
+
+    default:
+      throw new TypeError('Invalid operator: ' + op)
+  }
+}
+
+exports.Comparator = Comparator
+function Comparator (comp, options) {
+  if (!options || typeof options !== 'object') {
+    options = {
+      loose: !!options,
+      includePrerelease: false
+    }
+  }
+
+  if (comp instanceof Comparator) {
+    if (comp.loose === !!options.loose) {
+      return comp
+    } else {
+      comp = comp.value
+    }
+  }
+
+  if (!(this instanceof Comparator)) {
+    return new Comparator(comp, options)
+  }
+
+  debug('comparator', comp, options)
+  this.options = options
+  this.loose = !!options.loose
+  this.parse(comp)
+
+  if (this.semver === ANY) {
+    this.value = ''
+  } else {
+    this.value = this.operator + this.semver.version
+  }
+
+  debug('comp', this)
+}
+
+var ANY = {}
+Comparator.prototype.parse = function (comp) {
+  var r = this.options.loose ? re[t.COMPARATORLOOSE] : re[t.COMPARATOR]
+  var m = comp.match(r)
+
+  if (!m) {
+    throw new TypeError('Invalid comparator: ' + comp)
+  }
+
+  this.operator = m[1] !== undefined ? m[1] : ''
+  if (this.operator === '=') {
+    this.operator = ''
+  }
+
+  // if it literally is just '>' or '' then allow anything.
+  if (!m[2]) {
+    this.semver = ANY
+  } else {
+    this.semver = new SemVer(m[2], this.options.loose)
+  }
+}
+
+Comparator.prototype.toString = function () {
+  return this.value
+}
+
+Comparator.prototype.test = function (version) {
+  debug('Comparator.test', version, this.options.loose)
+
+  if (this.semver === ANY || version === ANY) {
+    return true
+  }
+
+  if (typeof version === 'string') {
+    try {
+      version = new SemVer(version, this.options)
+    } catch (er) {
+      return false
+    }
+  }
+
+  return cmp(version, this.operator, this.semver, this.options)
+}
+
+Comparator.prototype.intersects = function (comp, options) {
+  if (!(comp instanceof Comparator)) {
+    throw new TypeError('a Comparator is required')
+  }
+
+  if (!options || typeof options !== 'object') {
+    options = {
+      loose: !!options,
+      includePrerelease: false
+    }
+  }
+
+  var rangeTmp
+
+  if (this.operator === '') {
+    if (this.value === '') {
+      return true
+    }
+    rangeTmp = new Range(comp.value, options)
+    return satisfies(this.value, rangeTmp, options)
+  } else if (comp.operator === '') {
+    if (comp.value === '') {
+      return true
+    }
+    rangeTmp = new Range(this.value, options)
+    return satisfies(comp.semver, rangeTmp, options)
+  }
+
+  var sameDirectionIncreasing =
+    (this.operator === '>=' || this.operator === '>') &&
+    (comp.operator === '>=' || comp.operator === '>')
+  var sameDirectionDecreasing =
+    (this.operator === '<=' || this.operator === '<') &&
+    (comp.operator === '<=' || comp.operator === '<')
+  var sameSemVer = this.semver.version === comp.semver.version
+  var differentDirectionsInclusive =
+    (this.operator === '>=' || this.operator === '<=') &&
+    (comp.operator === '>=' || comp.operator === '<=')
+  var oppositeDirectionsLessThan =
+    cmp(this.semver, '<', comp.semver, options) &&
+    ((this.operator === '>=' || this.operator === '>') &&
+    (comp.operator === '<=' || comp.operator === '<'))
+  var oppositeDirectionsGreaterThan =
+    cmp(this.semver, '>', comp.semver, options) &&
+    ((this.operator === '<=' || this.operator === '<') &&
+    (comp.operator === '>=' || comp.operator === '>'))
+
+  return sameDirectionIncreasing || sameDirectionDecreasing ||
+    (sameSemVer && differentDirectionsInclusive) ||
+    oppositeDirectionsLessThan || oppositeDirectionsGreaterThan
+}
+
+exports.Range = Range
+function Range (range, options) {
+  if (!options || typeof options !== 'object') {
+    options = {
+      loose: !!options,
+      includePrerelease: false
+    }
+  }
+
+  if (range instanceof Range) {
+    if (range.loose === !!options.loose &&
+        range.includePrerelease === !!options.includePrerelease) {
+      return range
+    } else {
+      return new Range(range.raw, options)
+    }
+  }
+
+  if (range instanceof Comparator) {
+    return new Range(range.value, options)
+  }
+
+  if (!(this instanceof Range)) {
+    return new Range(range, options)
+  }
+
+  this.options = options
+  this.loose = !!options.loose
+  this.includePrerelease = !!options.includePrerelease
+
+  // First, split based on boolean or ||
+  this.raw = range
+  this.set = range.split(/\s*\|\|\s*/).map(function (range) {
+    return this.parseRange(range.trim())
+  }, this).filter(function (c) {
+    // throw out any that are not relevant for whatever reason
+    return c.length
+  })
+
+  if (!this.set.length) {
+    throw new TypeError('Invalid SemVer Range: ' + range)
+  }
+
+  this.format()
+}
+
+Range.prototype.format = function () {
+  this.range = this.set.map(function (comps) {
+    return comps.join(' ').trim()
+  }).join('||').trim()
+  return this.range
+}
+
+Range.prototype.toString = function () {
+  return this.range
+}
+
+Range.prototype.parseRange = function (range) {
+  var loose = this.options.loose
+  range = range.trim()
+  // `1.2.3 - 1.2.4` => `>=1.2.3 <=1.2.4`
+  var hr = loose ? re[t.HYPHENRANGELOOSE] : re[t.HYPHENRANGE]
+  range = range.replace(hr, hyphenReplace)
+  debug('hyphen replace', range)
+  // `> 1.2.3 < 1.2.5` => `>1.2.3 <1.2.5`
+  range = range.replace(re[t.COMPARATORTRIM], comparatorTrimReplace)
+  debug('comparator trim', range, re[t.COMPARATORTRIM])
+
+  // `~ 1.2.3` => `~1.2.3`
+  range = range.replace(re[t.TILDETRIM], tildeTrimReplace)
+
+  // `^ 1.2.3` => `^1.2.3`
+  range = range.replace(re[t.CARETTRIM], caretTrimReplace)
+
+  // normalize spaces
+  range = range.split(/\s+/).join(' ')
+
+  // At this point, the range is completely trimmed and
+  // ready to be split into comparators.
+
+  var compRe = loose ? re[t.COMPARATORLOOSE] : re[t.COMPARATOR]
+  var set = range.split(' ').map(function (comp) {
+    return parseComparator(comp, this.options)
+  }, this).join(' ').split(/\s+/)
+  if (this.options.loose) {
+    // in loose mode, throw out any that are not valid comparators
+    set = set.filter(function (comp) {
+      return !!comp.match(compRe)
+    })
+  }
+  set = set.map(function (comp) {
+    return new Comparator(comp, this.options)
+  }, this)
+
+  return set
+}
+
+Range.prototype.intersects = function (range, options) {
+  if (!(range instanceof Range)) {
+    throw new TypeError('a Range is required')
+  }
+
+  return this.set.some(function (thisComparators) {
+    return (
+      isSatisfiable(thisComparators, options) &&
+      range.set.some(function (rangeComparators) {
+        return (
+          isSatisfiable(rangeComparators, options) &&
+          thisComparators.every(function (thisComparator) {
+            return rangeComparators.every(function (rangeComparator) {
+              return thisComparator.intersects(rangeComparator, options)
+            })
+          })
+        )
+      })
+    )
+  })
+}
+
+// take a set of comparators and determine whether there
+// exists a version which can satisfy it
+function isSatisfiable (comparators, options) {
+  var result = true
+  var remainingComparators = comparators.slice()
+  var testComparator = remainingComparators.pop()
+
+  while (result && remainingComparators.length) {
+    result = remainingComparators.every(function (otherComparator) {
+      return testComparator.intersects(otherComparator, options)
+    })
+
+    testComparator = remainingComparators.pop()
+  }
+
+  return result
+}
+
+// Mostly just for testing and legacy API reasons
+exports.toComparators = toComparators
+function toComparators (range, options) {
+  return new Range(range, options).set.map(function (comp) {
+    return comp.map(function (c) {
+      return c.value
+    }).join(' ').trim().split(' ')
+  })
+}
+
+// comprised of xranges, tildes, stars, and gtlt's at this point.
+// already replaced the hyphen ranges
+// turn into a set of JUST comparators.
+function parseComparator (comp, options) {
+  debug('comp', comp, options)
+  comp = replaceCarets(comp, options)
+  debug('caret', comp)
+  comp = replaceTildes(comp, options)
+  debug('tildes', comp)
+  comp = replaceXRanges(comp, options)
+  debug('xrange', comp)
+  comp = replaceStars(comp, options)
+  debug('stars', comp)
+  return comp
+}
+
+function isX (id) {
+  return !id || id.toLowerCase() === 'x' || id === '*'
+}
+
+// ~, ~> --> * (any, kinda silly)
+// ~2, ~2.x, ~2.x.x, ~>2, ~>2.x ~>2.x.x --> >=2.0.0 <3.0.0
+// ~2.0, ~2.0.x, ~>2.0, ~>2.0.x --> >=2.0.0 <2.1.0
+// ~1.2, ~1.2.x, ~>1.2, ~>1.2.x --> >=1.2.0 <1.3.0
+// ~1.2.3, ~>1.2.3 --> >=1.2.3 <1.3.0
+// ~1.2.0, ~>1.2.0 --> >=1.2.0 <1.3.0
+function replaceTildes (comp, options) {
+  return comp.trim().split(/\s+/).map(function (comp) {
+    return replaceTilde(comp, options)
+  }).join(' ')
+}
+
+function replaceTilde (comp, options) {
+  var r = options.loose ? re[t.TILDELOOSE] : re[t.TILDE]
+  return comp.replace(r, function (_, M, m, p, pr) {
+    debug('tilde', comp, _, M, m, p, pr)
+    var ret
+
+    if (isX(M)) {
+      ret = ''
+    } else if (isX(m)) {
+      ret = '>=' + M + '.0.0 <' + (+M + 1) + '.0.0'
+    } else if (isX(p)) {
+      // ~1.2 == >=1.2.0 <1.3.0
+      ret = '>=' + M + '.' + m + '.0 <' + M + '.' + (+m + 1) + '.0'
+    } else if (pr) {
+      debug('replaceTilde pr', pr)
+      ret = '>=' + M + '.' + m + '.' + p + '-' + pr +
+            ' <' + M + '.' + (+m + 1) + '.0'
+    } else {
+      // ~1.2.3 == >=1.2.3 <1.3.0
+      ret = '>=' + M + '.' + m + '.' + p +
+            ' <' + M + '.' + (+m + 1) + '.0'
+    }
+
+    debug('tilde return', ret)
+    return ret
+  })
+}
+
+// ^ --> * (any, kinda silly)
+// ^2, ^2.x, ^2.x.x --> >=2.0.0 <3.0.0
+// ^2.0, ^2.0.x --> >=2.0.0 <3.0.0
+// ^1.2, ^1.2.x --> >=1.2.0 <2.0.0
+// ^1.2.3 --> >=1.2.3 <2.0.0
+// ^1.2.0 --> >=1.2.0 <2.0.0
+function replaceCarets (comp, options) {
+  return comp.trim().split(/\s+/).map(function (comp) {
+    return replaceCaret(comp, options)
+  }).join(' ')
+}
+
+function replaceCaret (comp, options) {
+  debug('caret', comp, options)
+  var r = options.loose ? re[t.CARETLOOSE] : re[t.CARET]
+  return comp.replace(r, function (_, M, m, p, pr) {
+    debug('caret', comp, _, M, m, p, pr)
+    var ret
+
+    if (isX(M)) {
+      ret = ''
+    } else if (isX(m)) {
+      ret = '>=' + M + '.0.0 <' + (+M + 1) + '.0.0'
+    } else if (isX(p)) {
+      if (M === '0') {
+        ret = '>=' + M + '.' + m + '.0 <' + M + '.' + (+m + 1) + '.0'
+      } else {
+        ret = '>=' + M + '.' + m + '.0 <' + (+M + 1) + '.0.0'
+      }
+    } else if (pr) {
+      debug('replaceCaret pr', pr)
+      if (M === '0') {
+        if (m === '0') {
+          ret = '>=' + M + '.' + m + '.' + p + '-' + pr +
+                ' <' + M + '.' + m + '.' + (+p + 1)
+        } else {
+          ret = '>=' + M + '.' + m + '.' + p + '-' + pr +
+                ' <' + M + '.' + (+m + 1) + '.0'
+        }
+      } else {
+        ret = '>=' + M + '.' + m + '.' + p + '-' + pr +
+              ' <' + (+M + 1) + '.0.0'
+      }
+    } else {
+      debug('no pr')
+      if (M === '0') {
+        if (m === '0') {
+          ret = '>=' + M + '.' + m + '.' + p +
+                ' <' + M + '.' + m + '.' + (+p + 1)
+        } else {
+          ret = '>=' + M + '.' + m + '.' + p +
+                ' <' + M + '.' + (+m + 1) + '.0'
+        }
+      } else {
+        ret = '>=' + M + '.' + m + '.' + p +
+              ' <' + (+M + 1) + '.0.0'
+      }
+    }
+
+    debug('caret return', ret)
+    return ret
+  })
+}
+
+function replaceXRanges (comp, options) {
+  debug('replaceXRanges', comp, options)
+  return comp.split(/\s+/).map(function (comp) {
+    return replaceXRange(comp, options)
+  }).join(' ')
+}
+
+function replaceXRange (comp, options) {
+  comp = comp.trim()
+  var r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE]
+  return comp.replace(r, function (ret, gtlt, M, m, p, pr) {
+    debug('xRange', comp, ret, gtlt, M, m, p, pr)
+    var xM = isX(M)
+    var xm = xM || isX(m)
+    var xp = xm || isX(p)
+    var anyX = xp
+
+    if (gtlt === '=' && anyX) {
+      gtlt = ''
+    }
+
+    // if we're including prereleases in the match, then we need
+    // to fix this to -0, the lowest possible prerelease value
+    pr = options.includePrerelease ? '-0' : ''
+
+    if (xM) {
+      if (gtlt === '>' || gtlt === '<') {
+        // nothing is allowed
+        ret = '<0.0.0-0'
+      } else {
+        // nothing is forbidden
+        ret = '*'
+      }
+    } else if (gtlt && anyX) {
+      // we know patch is an x, because we have any x at all.
+      // replace X with 0
+      if (xm) {
+        m = 0
+      }
+      p = 0
+
+      if (gtlt === '>') {
+        // >1 => >=2.0.0
+        // >1.2 => >=1.3.0
+        // >1.2.3 => >= 1.2.4
+        gtlt = '>='
+        if (xm) {
+          M = +M + 1
+          m = 0
+          p = 0
+        } else {
+          m = +m + 1
+          p = 0
+        }
+      } else if (gtlt === '<=') {
+        // <=0.7.x is actually <0.8.0, since any 0.7.x should
+        // pass.  Similarly, <=7.x is actually <8.0.0, etc.
+        gtlt = '<'
+        if (xm) {
+          M = +M + 1
+        } else {
+          m = +m + 1
+        }
+      }
+
+      ret = gtlt + M + '.' + m + '.' + p + pr
+    } else if (xm) {
+      ret = '>=' + M + '.0.0' + pr + ' <' + (+M + 1) + '.0.0' + pr
+    } else if (xp) {
+      ret = '>=' + M + '.' + m + '.0' + pr +
+        ' <' + M + '.' + (+m + 1) + '.0' + pr
+    }
+
+    debug('xRange return', ret)
+
+    return ret
+  })
+}
+
+// Because * is AND-ed with everything else in the comparator,
+// and '' means "any version", just remove the *s entirely.
+function replaceStars (comp, options) {
+  debug('replaceStars', comp, options)
+  // Looseness is ignored here.  star is always as loose as it gets!
+  return comp.trim().replace(re[t.STAR], '')
+}
+
+// This function is passed to string.replace(re[t.HYPHENRANGE])
+// M, m, patch, prerelease, build
+// 1.2 - 3.4.5 => >=1.2.0 <=3.4.5
+// 1.2.3 - 3.4 => >=1.2.0 <3.5.0 Any 3.4.x will do
+// 1.2 - 3.4 => >=1.2.0 <3.5.0
+function hyphenReplace ($0,
+  from, fM, fm, fp, fpr, fb,
+  to, tM, tm, tp, tpr, tb) {
+  if (isX(fM)) {
+    from = ''
+  } else if (isX(fm)) {
+    from = '>=' + fM + '.0.0'
+  } else if (isX(fp)) {
+    from = '>=' + fM + '.' + fm + '.0'
+  } else {
+    from = '>=' + from
+  }
+
+  if (isX(tM)) {
+    to = ''
+  } else if (isX(tm)) {
+    to = '<' + (+tM + 1) + '.0.0'
+  } else if (isX(tp)) {
+    to = '<' + tM + '.' + (+tm + 1) + '.0'
+  } else if (tpr) {
+    to = '<=' + tM + '.' + tm + '.' + tp + '-' + tpr
+  } else {
+    to = '<=' + to
+  }
+
+  return (from + ' ' + to).trim()
+}
+
+// if ANY of the sets match ALL of its comparators, then pass
+Range.prototype.test = function (version) {
+  if (!version) {
+    return false
+  }
+
+  if (typeof version === 'string') {
+    try {
+      version = new SemVer(version, this.options)
+    } catch (er) {
+      return false
+    }
+  }
+
+  for (var i = 0; i < this.set.length; i++) {
+    if (testSet(this.set[i], version, this.options)) {
+      return true
+    }
+  }
+  return false
+}
+
+function testSet (set, version, options) {
+  for (var i = 0; i < set.length; i++) {
+    if (!set[i].test(version)) {
+      return false
+    }
+  }
+
+  if (version.prerelease.length && !options.includePrerelease) {
+    // Find the set of versions that are allowed to have prereleases
+    // For example, ^1.2.3-pr.1 desugars to >=1.2.3-pr.1 <2.0.0
+    // That should allow `1.2.3-pr.2` to pass.
+    // However, `1.2.4-alpha.notready` should NOT be allowed,
+    // even though it's within the range set by the comparators.
+    for (i = 0; i < set.length; i++) {
+      debug(set[i].semver)
+      if (set[i].semver === ANY) {
+        continue
+      }
+
+      if (set[i].semver.prerelease.length > 0) {
+        var allowed = set[i].semver
+        if (allowed.major === version.major &&
+            allowed.minor === version.minor &&
+            allowed.patch === version.patch) {
+          return true
+        }
+      }
+    }
+
+    // Version has a -pre, but it's not one of the ones we like.
+    return false
+  }
+
+  return true
+}
+
+exports.satisfies = satisfies
+function satisfies (version, range, options) {
+  try {
+    range = new Range(range, options)
+  } catch (er) {
+    return false
+  }
+  return range.test(version)
+}
+
+exports.maxSatisfying = maxSatisfying
+function maxSatisfying (versions, range, options) {
+  var max = null
+  var maxSV = null
+  try {
+    var rangeObj = new Range(range, options)
+  } catch (er) {
+    return null
+  }
+  versions.forEach(function (v) {
+    if (rangeObj.test(v)) {
+      // satisfies(v, range, options)
+      if (!max || maxSV.compare(v) === -1) {
+        // compare(max, v, true)
+        max = v
+        maxSV = new SemVer(max, options)
+      }
+    }
+  })
+  return max
+}
+
+exports.minSatisfying = minSatisfying
+function minSatisfying (versions, range, options) {
+  var min = null
+  var minSV = null
+  try {
+    var rangeObj = new Range(range, options)
+  } catch (er) {
+    return null
+  }
+  versions.forEach(function (v) {
+    if (rangeObj.test(v)) {
+      // satisfies(v, range, options)
+      if (!min || minSV.compare(v) === 1) {
+        // compare(min, v, true)
+        min = v
+        minSV = new SemVer(min, options)
+      }
+    }
+  })
+  return min
+}
+
+exports.minVersion = minVersion
+function minVersion (range, loose) {
+  range = new Range(range, loose)
+
+  var minver = new SemVer('0.0.0')
+  if (range.test(minver)) {
+    return minver
+  }
+
+  minver = new SemVer('0.0.0-0')
+  if (range.test(minver)) {
+    return minver
+  }
+
+  minver = null
+  for (var i = 0; i < range.set.length; ++i) {
+    var comparators = range.set[i]
+
+    comparators.forEach(function (comparator) {
+      // Clone to avoid manipulating the comparator's semver object.
+      var compver = new SemVer(comparator.semver.version)
+      switch (comparator.operator) {
+        case '>':
+          if (compver.prerelease.length === 0) {
+            compver.patch++
+          } else {
+            compver.prerelease.push(0)
+          }
+          compver.raw = compver.format()
+          /* fallthrough */
+        case '':
+        case '>=':
+          if (!minver || gt(minver, compver)) {
+            minver = compver
+          }
+          break
+        case '<':
+        case '<=':
+          /* Ignore maximum versions */
+          break
+        /* istanbul ignore next */
+        default:
+          throw new Error('Unexpected operation: ' + comparator.operator)
+      }
+    })
+  }
+
+  if (minver && range.test(minver)) {
+    return minver
+  }
+
+  return null
+}
+
+exports.validRange = validRange
+function validRange (range, options) {
+  try {
+    // Return '*' instead of '' so that truthiness works.
+    // This will throw if it's invalid anyway
+    return new Range(range, options).range || '*'
+  } catch (er) {
+    return null
+  }
+}
+
+// Determine if version is less than all the versions possible in the range
+exports.ltr = ltr
+function ltr (version, range, options) {
+  return outside(version, range, '<', options)
+}
+
+// Determine if version is greater than all the versions possible in the range.
+exports.gtr = gtr
+function gtr (version, range, options) {
+  return outside(version, range, '>', options)
+}
+
+exports.outside = outside
+function outside (version, range, hilo, options) {
+  version = new SemVer(version, options)
+  range = new Range(range, options)
+
+  var gtfn, ltefn, ltfn, comp, ecomp
+  switch (hilo) {
+    case '>':
+      gtfn = gt
+      ltefn = lte
+      ltfn = lt
+      comp = '>'
+      ecomp = '>='
+      break
+    case '<':
+      gtfn = lt
+      ltefn = gte
+      ltfn = gt
+      comp = '<'
+      ecomp = '<='
+      break
+    default:
+      throw new TypeError('Must provide a hilo val of "<" or ">"')
+  }
+
+  // If it satisifes the range it is not outside
+  if (satisfies(version, range, options)) {
+    return false
+  }
+
+  // From now on, variable terms are as if we're in "gtr" mode.
+  // but note that everything is flipped for the "ltr" function.
+
+  for (var i = 0; i < range.set.length; ++i) {
+    var comparators = range.set[i]
+
+    var high = null
+    var low = null
+
+    comparators.forEach(function (comparator) {
+      if (comparator.semver === ANY) {
+        comparator = new Comparator('>=0.0.0')
+      }
+      high = high || comparator
+      low = low || comparator
+      if (gtfn(comparator.semver, high.semver, options)) {
+        high = comparator
+      } else if (ltfn(comparator.semver, low.semver, options)) {
+        low = comparator
+      }
+    })
+
+    // If the edge version comparator has a operator then our version
+    // isn't outside it
+    if (high.operator === comp || high.operator === ecomp) {
+      return false
+    }
+
+    // If the lowest version comparator has an operator and our version
+    // is less than it then it isn't higher than the range
+    if ((!low.operator || low.operator === comp) &&
+        ltefn(version, low.semver)) {
+      return false
+    } else if (low.operator === ecomp && ltfn(version, low.semver)) {
+      return false
+    }
+  }
+  return true
+}
+
+exports.prerelease = prerelease
+function prerelease (version, options) {
+  var parsed = parse(version, options)
+  return (parsed && parsed.prerelease.length) ? parsed.prerelease : null
+}
+
+exports.intersects = intersects
+function intersects (r1, r2, options) {
+  r1 = new Range(r1, options)
+  r2 = new Range(r2, options)
+  return r1.intersects(r2)
+}
+
+exports.coerce = coerce
+function coerce (version, options) {
+  if (version instanceof SemVer) {
+    return version
+  }
+
+  if (typeof version === 'number') {
+    version = String(version)
+  }
+
+  if (typeof version !== 'string') {
+    return null
+  }
+
+  options = options || {}
+
+  var match = null
+  if (!options.rtl) {
+    match = version.match(re[t.COERCE])
+  } else {
+    // Find the right-most coercible string that does not share
+    // a terminus with a more left-ward coercible string.
+    // Eg, '1.2.3.4' wants to coerce '2.3.4', not '3.4' or '4'
+    //
+    // Walk through the string checking with a /g regexp
+    // Manually set the index so as to pick up overlapping matches.
+    // Stop when we get a match that ends at the string end, since no
+    // coercible string can be more right-ward without the same terminus.
+    var next
+    while ((next = re[t.COERCERTL].exec(version)) &&
+      (!match || match.index + match[0].length !== version.length)
+    ) {
+      if (!match ||
+          next.index + next[0].length !== match.index + match[0].length) {
+        match = next
+      }
+      re[t.COERCERTL].lastIndex = next.index + next[1].length + next[2].length
+    }
+    // leave it in a clean state
+    re[t.COERCERTL].lastIndex = -1
+  }
+
+  if (match === null) {
+    return null
+  }
+
+  return parse(match[2] +
+    '.' + (match[3] || '0') +
+    '.' + (match[4] || '0'), options)
+}
+
+
+/***/ }),
+
 /***/ 4931:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -83646,9 +83909,25 @@ SafeBuffer.allocUnsafeSlow = function (size) {
 // ignored, since we can never get coverage for them.
 // grab a reference to node's real process object right away
 var process = global.process
+
+const processOk = function (process) {
+  return process &&
+    typeof process === 'object' &&
+    typeof process.removeListener === 'function' &&
+    typeof process.emit === 'function' &&
+    typeof process.reallyExit === 'function' &&
+    typeof process.listeners === 'function' &&
+    typeof process.kill === 'function' &&
+    typeof process.pid === 'number' &&
+    typeof process.on === 'function'
+}
+
 // some kind of non-node environment, just no-op
-if (typeof process !== 'object' || !process) {
-  module.exports = function () {}
+/* istanbul ignore if */
+if (!processOk(process)) {
+  module.exports = function () {
+    return function () {}
+  }
 } else {
   var assert = __nccwpck_require__(2357)
   var signals = __nccwpck_require__(3710)
@@ -83679,8 +83958,9 @@ if (typeof process !== 'object' || !process) {
   }
 
   module.exports = function (cb, opts) {
-    if (global.process !== process) {
-      return
+    /* istanbul ignore if */
+    if (!processOk(global.process)) {
+      return function () {}
     }
     assert.equal(typeof cb, 'function', 'a callback must be provided for exit handler')
 
@@ -83706,7 +83986,7 @@ if (typeof process !== 'object' || !process) {
   }
 
   var unload = function unload () {
-    if (!loaded || global.process !== process) {
+    if (!loaded || !processOk(global.process)) {
       return
     }
     loaded = false
@@ -83723,6 +84003,7 @@ if (typeof process !== 'object' || !process) {
   module.exports.unload = unload
 
   var emit = function emit (event, code, signal) {
+    /* istanbul ignore if */
     if (emitter.emitted[event]) {
       return
     }
@@ -83734,7 +84015,8 @@ if (typeof process !== 'object' || !process) {
   var sigListeners = {}
   signals.forEach(function (sig) {
     sigListeners[sig] = function listener () {
-      if (process !== global.process) {
+      /* istanbul ignore if */
+      if (!processOk(global.process)) {
         return
       }
       // If there are no other listeners, an exit is coming!
@@ -83753,6 +84035,7 @@ if (typeof process !== 'object' || !process) {
           // so use a supported signal instead
           sig = 'SIGINT'
         }
+        /* istanbul ignore next */
         process.kill(process.pid, sig)
       }
     }
@@ -83765,7 +84048,7 @@ if (typeof process !== 'object' || !process) {
   var loaded = false
 
   var load = function load () {
-    if (loaded || process !== global.process) {
+    if (loaded || !processOk(global.process)) {
       return
     }
     loaded = true
@@ -83792,10 +84075,11 @@ if (typeof process !== 'object' || !process) {
 
   var originalProcessReallyExit = process.reallyExit
   var processReallyExit = function processReallyExit (code) {
-    if (process !== global.process) {
+    /* istanbul ignore if */
+    if (!processOk(global.process)) {
       return
     }
-    process.exitCode = code || 0
+    process.exitCode = code || /* istanbul ignore next */ 0
     emit('exit', process.exitCode, null)
     /* istanbul ignore next */
     emit('afterexit', process.exitCode, null)
@@ -83805,14 +84089,17 @@ if (typeof process !== 'object' || !process) {
 
   var originalProcessEmit = process.emit
   var processEmit = function processEmit (ev, arg) {
-    if (ev === 'exit' && process === global.process) {
+    if (ev === 'exit' && processOk(global.process)) {
+      /* istanbul ignore else */
       if (arg !== undefined) {
         process.exitCode = arg
       }
       var ret = originalProcessEmit.apply(this, arguments)
+      /* istanbul ignore next */
       emit('exit', process.exitCode, null)
       /* istanbul ignore next */
       emit('afterexit', process.exitCode, null)
+      /* istanbul ignore next */
       return ret
     } else {
       return originalProcessEmit.apply(this, arguments)
