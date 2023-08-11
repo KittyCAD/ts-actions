@@ -39,7 +39,7 @@
     "@actions/github": "^5.0.1",
     "@google-cloud/storage": "^5.20.5",
     "@types/libsodium-wrappers": "^0.7.10",
-    "filestack-js": "^3.25.0",
+    "filestack-js": "^3.27.0",
     "globby": "^13.1.1",
     "libsodium-wrappers": "^0.7.10",
     "node-fetch": "^3.2.10",
