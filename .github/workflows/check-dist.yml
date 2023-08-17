@@ -26,7 +26,7 @@ jobs:
             ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Set Node.js 16.x
-        uses: actions/setup-node@v2.5.1
+        uses: actions/setup-node@v3.8.1
         with:
           node-version: 16.x
 
