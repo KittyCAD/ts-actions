@@ -12,7 +12,7 @@ jobs:
   autogen-readme-list:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: ./autogen-readme-list/
         id: autogen-readme-list
         with:

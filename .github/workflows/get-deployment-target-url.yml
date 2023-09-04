@@ -12,7 +12,7 @@ jobs:
   get-deployment-target-url-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: ./get-deployment-target-url/
         id: get-preview-url
         with:
