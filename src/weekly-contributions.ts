@@ -49,32 +49,6 @@ async function main() {
     .map(({name}) => name)
     .filter(name => !name.startsWith('_'))
 
-  const prsResponse: {
-    [repoName: string]: {
-      pullRequests: {
-        nodes: {
-          author: {
-            login: string
-          }
-          repository: {
-            name: string
-            id: string
-          }
-          state: PRStates
-          number: number
-          title: string
-          url: string
-          updatedAt: string
-        }[]
-      }
-    }
-  } = await octokit.graphql(
-    `
-      query{
-        ${repos.map(makeInnerPRQuery).join('\n')}
-      }
-      `
-  )
   interface PRGroupedByAuthor {
     [login: string]: {
       PRs: {
@@ -93,37 +67,67 @@ async function main() {
   }
   const prGroupedByAuthor: PRGroupedByAuthor = {}
   const PRsToGetCommentsFor: {repo: string; PRNum: number}[] = []
-  Object.values(prsResponse).forEach(repo => {
-    repo.pullRequests.nodes.forEach(
-      ({author, repository, state, url, title, updatedAt, number}) => {
-        const login = author.login
-        if (login === 'dependabot') return
-        if (cutOffDate.valueOf() > new Date(updatedAt).valueOf()) return
-        if (!prGroupedByAuthor[login]) {
-          prGroupedByAuthor[login] = {
-            PRs: [],
-            PRComments: [],
-            issuesOpened: [],
-            issuesClosed: [],
-            issuesComments: []
-          }
+  const chunkSize = 25
+  for (let i = 0; i < repos.length; i += chunkSize) {
+    const reposChunk = repos.slice(i, i + chunkSize)
+    const prsResponse: {
+      [repoName: string]: {
+        pullRequests: {
+          nodes: {
+            author: {
+              login: string
+            }
+            repository: {
+              name: string
+              id: string
+            }
+            state: PRStates
+            number: number
+            title: string
+            url: string
+            updatedAt: string
+          }[]
         }
-        prGroupedByAuthor[login].PRs.push({
-          repo: repository.name,
-          number,
-          author: author.login,
-          url,
-          state,
-          title
-        })
-
-        PRsToGetCommentsFor.push({
-          repo: repository.name,
-          PRNum: number
-        })
       }
+    } = await octokit.graphql(
+      `
+        query{
+          ${reposChunk.map(makeInnerPRQuery).join('\n')}
+        }
+        `
     )
-  })
+    Object.values(prsResponse).forEach(repo => {
+      repo.pullRequests.nodes.forEach(
+        ({author, repository, state, url, title, updatedAt, number}) => {
+          const login = author.login
+          if (login === 'dependabot') return
+          if (cutOffDate.valueOf() > new Date(updatedAt).valueOf()) return
+          if (!prGroupedByAuthor[login]) {
+            prGroupedByAuthor[login] = {
+              PRs: [],
+              PRComments: [],
+              issuesOpened: [],
+              issuesClosed: [],
+              issuesComments: []
+            }
+          }
+          prGroupedByAuthor[login].PRs.push({
+            repo: repository.name,
+            number,
+            author: author.login,
+            url,
+            state,
+            title
+          })
+
+          PRsToGetCommentsFor.push({
+            repo: repository.name,
+            PRNum: number
+          })
+        }
+      )
+    })
+  }
 
   const commentsResponse: {
     [repo: string]: {
