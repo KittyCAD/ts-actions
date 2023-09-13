@@ -8,7 +8,11 @@ require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -48,7 +52,7 @@ async function main() {
     const reposResponse = await octokit.graphql(`
     query {
         organization(login: "KittyCAD") {
-        repositories(first: 100){ 
+        repositories(first: 60){ 
           nodes {
             name
           }
@@ -59,43 +63,47 @@ async function main() {
     const repos = reposResponse.organization.repositories.nodes
         .map(({ name }) => name)
         .filter(name => !name.startsWith('_'));
-    const prsResponse = await octokit.graphql(`
-      query{
-        ${repos.map(makeInnerPRQuery).join('\n')}
-      }
-      `);
     const prGroupedByAuthor = {};
     const PRsToGetCommentsFor = [];
-    Object.values(prsResponse).forEach(repo => {
-        repo.pullRequests.nodes.forEach(({ author, repository, state, url, title, updatedAt, number }) => {
-            const login = author.login;
-            if (login === 'dependabot')
-                return;
-            if (cutOffDate.valueOf() > new Date(updatedAt).valueOf())
-                return;
-            if (!prGroupedByAuthor[login]) {
-                prGroupedByAuthor[login] = {
-                    PRs: [],
-                    PRComments: [],
-                    issuesOpened: [],
-                    issuesClosed: [],
-                    issuesComments: []
-                };
-            }
-            prGroupedByAuthor[login].PRs.push({
-                repo: repository.name,
-                number,
-                author: author.login,
-                url,
-                state,
-                title
-            });
-            PRsToGetCommentsFor.push({
-                repo: repository.name,
-                PRNum: number
+    const chunkSize = 25;
+    for (let i = 0; i < repos.length; i += chunkSize) {
+        const reposChunk = repos.slice(i, i + chunkSize);
+        const prsResponse = await octokit.graphql(`
+        query{
+          ${reposChunk.map(makeInnerPRQuery).join('\n')}
+        }
+        `);
+        Object.values(prsResponse).forEach(repo => {
+            repo.pullRequests.nodes.forEach(({ author, repository, state, url, title, updatedAt, number }) => {
+                const login = author.login;
+                if (login === 'dependabot')
+                    return;
+                if (cutOffDate.valueOf() > new Date(updatedAt).valueOf())
+                    return;
+                if (!prGroupedByAuthor[login]) {
+                    prGroupedByAuthor[login] = {
+                        PRs: [],
+                        PRComments: [],
+                        issuesOpened: [],
+                        issuesClosed: [],
+                        issuesComments: []
+                    };
+                }
+                prGroupedByAuthor[login].PRs.push({
+                    repo: repository.name,
+                    number,
+                    author: author.login,
+                    url,
+                    state,
+                    title
+                });
+                PRsToGetCommentsFor.push({
+                    repo: repository.name,
+                    PRNum: number
+                });
             });
         });
-    });
+    }
     const commentsResponse = await octokit.graphql(`
         query{
         ${PRsToGetCommentsFor.map(({ repo, PRNum }) => makeInnerPRCommentQuery(repo, PRNum)).join('\n')}
