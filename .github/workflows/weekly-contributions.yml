@@ -11,27 +11,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Get next date
+        id: nextdate
+        run: echo "::set-output name=nextdate::$(date --date='+1 day' '+%Y-%m-%d')"
       - uses: ./weekly-contributions/
-        id: weekly-contributions
+        id: markdown
         with:
           github-token: ${{ secrets.GLOBAL_PAT }}
           markdown-prefix: "_test prefix_ `code 🤷`"
           login-to-name-map: |
             {
-              "Irev-Dev": "Kurt",
-              "hanbollar": "Hannah",
-              "iterion": "Adam",
-              "JBEmbedded": "JB",
-              "jessfraz": "Jess",
-              "jgomez720": "Josh",
-              "JordanNoone": "Jordan",
-              "mansoorsiddiqui": "Mansoor",
-              "vonniwilliams": "Vonni"
+              "alteous": "David Harvey-Macaulay",
+              "adamchalmers": "Adam Chalmers",
+              "brwhale": "Garrett Skelton",
+              "franknoirot": "Frank Noirot",
+              "greg-kcio": "Greg Sweeney",
+              "gserena01": "Serena Gandhi",
+              "hanbollar": "Hannah Bollar",
+              "Irev-Dev": "Kurt Hutten",
+              "iterion": "Adam Sunderland",
+              "JBEmbedded": "Jenna Bryant",
+              "jessfraz": "Jess Frazelle",
+              "jgomez720": "Josh Gomez",
+              "JordanNoone": "Jordan Noone",
+              "mansoorsiddiqui": "Mansoor Siddiqui",
+              "mlfarrell": "Mike Farrell",
+              "pierremtb": "Pierre Jacquier",
+              "vonniwilliams": "Vonni Williams"
             }
           ignore-summaries-login-array: |
             [
-              "vonniwilliams",
-              "jessfraz"
+               "brwhale",
+               "hanbollar",
+               "JBEmbedded",
+               "jessfraz",
+               "JordanNoone",
+               "mansoorsiddiqui",
+               "pierremtb",
+               "vonniwilliams"
             ]
       - name: setup gh cli
         run: |
@@ -39,5 +56,5 @@ jobs:
       - name: comment markdown
         env:
           PRNUM: ${{ github.event.pull_request.number }}
-          BODY: '${{ steps.weekly-contributions.outputs.markdown }}'
+          BODY: '${{ steps.markdown.outputs.markdown }}'
         run: gh pr comment $PRNUM --body "$BODY"
