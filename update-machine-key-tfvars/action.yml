@@ -22,5 +22,5 @@ inputs:
     default: 75
     description: 'The maximum age of a key before it gets rotated'
 runs:
-  using: 'node16'
+  using: 'node20'
   main: '../dist/update-machine-key-tfvars/index.js'
