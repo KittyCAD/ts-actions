@@ -36,7 +36,7 @@ async function main() {
     `
     query {
         organization(login: "KittyCAD") {
-        repositories(first: 60){ 
+        repositories(first: 200){ 
           nodes {
             name
           }
@@ -48,6 +48,8 @@ async function main() {
   const repos = reposResponse.organization.repositories.nodes
     .map(({name}) => name)
     .filter(name => !name.startsWith('_'))
+
+  core.debug(`RepoLen: ${repos.length}`)
 
   interface PRGroupedByAuthor {
     [login: string]: {

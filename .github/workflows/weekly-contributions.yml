@@ -17,7 +17,7 @@ jobs:
       - uses: ./weekly-contributions/
         id: markdown
         with:
-          github-token: ${{ secrets.GLOBAL_PAT }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           markdown-prefix: "_test prefix_ `code 🤷`"
           login-to-name-map: |
             {
@@ -52,7 +52,7 @@ jobs:
             ]
       - name: setup gh cli
         run: |
-          echo "${{ secrets.GLOBAL_PAT }}" | gh auth login --with-token
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
       - name: comment markdown
         env:
           PRNUM: ${{ github.event.pull_request.number }}
