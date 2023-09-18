@@ -49,18 +49,11 @@ async function main() {
     const daysInReport = parseInt(daysInReportStr);
     const cutOffDate = new Date(date);
     cutOffDate.setDate(cutOffDate.getDate() - daysInReport);
-    const reposResponse = await octokit.graphql(`
-    query {
-        organization(login: "KittyCAD") {
-        repositories(first: 60){ 
-          nodes {
-            name
-          }
-        }
-      }
-    }
-      `);
-    const repos = reposResponse.organization.repositories.nodes
+    const { data } = await octokit.rest.repos.listForOrg({
+        org: "KittyCAD",
+        per_page: 100,
+    });
+    const repos = data
         .map(({ name }) => name)
         .filter(name => !name.startsWith('_'));
     const prGroupedByAuthor = {};

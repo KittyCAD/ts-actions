@@ -14,8 +14,6 @@ inputs:
   repo:
     required: false
     description: git repo name. If not supplied, github context is used
-
- 
 runs:
   main: '../dist/create-openapi-types/index.js'
-  using: 'node16'
+  using: 'node20'

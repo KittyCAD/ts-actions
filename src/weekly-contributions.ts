@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
+import { OctokitResponse } from "@octokit/types";
 import {inspect} from 'util'
 
 type IssueStates = 'OPEN' | 'CLOSED'
@@ -26,27 +27,12 @@ async function main() {
   const cutOffDate = new Date(date)
   cutOffDate.setDate(cutOffDate.getDate() - daysInReport)
 
-  const reposResponse: {
-    organization: {
-      repositories: {
-        nodes: {name: string}[]
-      }
-    }
-  } = await octokit.graphql(
-    `
-    query {
-        organization(login: "KittyCAD") {
-        repositories(first: 60){ 
-          nodes {
-            name
-          }
-        }
-      }
-    }
-      `
-  )
-  const repos = reposResponse.organization.repositories.nodes
-    .map(({name}) => name)
+  const { data } = await octokit.rest.repos.listForOrg({
+    org: "KittyCAD",
+    per_page: 100,
+  })
+  const repos = data
+    .map(({ name }) => name)
     .filter(name => !name.startsWith('_'))
 
   interface PRGroupedByAuthor {

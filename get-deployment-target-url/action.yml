@@ -15,5 +15,5 @@ outputs:
   targeturl:
     description: deployment target url, vercel preview in our case
 runs:
-  using: 'node16'
+  using: 'node20'
   main: '../dist/get-deployment-target-url/index.js'
