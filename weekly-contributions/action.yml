@@ -24,5 +24,5 @@ outputs:
   markdown:
     description: Output summary
 runs:
-  using: 'node16'
+  using: 'node20'
   main: '../dist/weekly-contributions/index.js'
