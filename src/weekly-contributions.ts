@@ -1,12 +1,12 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import { OctokitResponse } from "@octokit/types";
-import {inspect} from 'util'
+import { OctokitResponse } from '@octokit/types'
+import { inspect } from 'util'
 
 type IssueStates = 'OPEN' | 'CLOSED'
 type PRStates = IssueStates | 'MERGED'
 
-let loginToNameMap: {[key: string]: string} = {}
+let loginToNameMap: { [key: string]: string } = {}
 let ignoreSummariesLoginArray: string[] = []
 
 async function main() {
@@ -27,13 +27,13 @@ async function main() {
   const cutOffDate = new Date(date)
   cutOffDate.setDate(cutOffDate.getDate() - daysInReport)
 
+  // 100 is the max page limit, we'll need to paginate this if it starts failing again
   const { data } = await octokit.rest.repos.listForOrg({
-    org: "KittyCAD",
-    per_page: 100,
+    org: 'KittyCAD',
+    sort: 'pushed',
+    per_page: 100
   })
-  const repos = data
-    .map(({ name }) => name)
-    .filter(name => !name.startsWith('_'))
+  const repos = data.map(({ name }) => name).filter(name => !name.startsWith('_'))
 
   interface PRGroupedByAuthor {
     [login: string]: {
@@ -52,7 +52,7 @@ async function main() {
     }
   }
   const prGroupedByAuthor: PRGroupedByAuthor = {}
-  const PRsToGetCommentsFor: {repo: string; PRNum: number}[] = []
+  const PRsToGetCommentsFor: { repo: string; PRNum: number }[] = []
   const chunkSize = 25
   for (let i = 0; i < repos.length; i += chunkSize) {
     const reposChunk = repos.slice(i, i + chunkSize)
@@ -84,7 +84,7 @@ async function main() {
     )
     Object.values(prsResponse).forEach(repo => {
       repo.pullRequests.nodes.forEach(
-        ({author, repository, state, url, title, updatedAt, number}) => {
+        ({ author, repository, state, url, title, updatedAt, number }) => {
           const login = author.login
           if (login === 'dependabot') return
           if (cutOffDate.valueOf() > new Date(updatedAt).valueOf()) return
@@ -140,9 +140,9 @@ async function main() {
   } = await octokit.graphql(
     `
         query{
-        ${PRsToGetCommentsFor.map(({repo, PRNum}) =>
-          makeInnerPRCommentQuery(repo, PRNum)
-        ).join('\n')}
+        ${PRsToGetCommentsFor.map(({ repo, PRNum }) =>
+      makeInnerPRCommentQuery(repo, PRNum)
+    ).join('\n')}
         }
         `
   )
@@ -155,8 +155,8 @@ async function main() {
       title: string
     }
   } = {}
-  Object.values(commentsResponse).forEach(({pullRequest}) => {
-    pullRequest.comments.nodes.forEach(({url, author: commentAuthor}) => {
+  Object.values(commentsResponse).forEach(({ pullRequest }) => {
+    pullRequest.comments.nodes.forEach(({ url, author: commentAuthor }) => {
       if (
         ['codecov', 'dependabot', 'github-actions', 'vercel'].includes(
           commentAuthor.login
@@ -329,17 +329,17 @@ async function main() {
     `
       query{
           ${Object.values(IssueToGetCommentsOn)
-            .map(({repo, number}) => makeInnerIssueCommentQuery(repo, number))
-            .join('\n')}
+      .map(({ repo, number }) => makeInnerIssueCommentQuery(repo, number))
+      .join('\n')}
         }
         `
   )
-  Object.values(issuesCommentsResponse).forEach(({issue}) => {
+  Object.values(issuesCommentsResponse).forEach(({ issue }) => {
     issue.comments.nodes.forEach(comment => {
       if (cutOffDate.valueOf() > new Date(comment.updatedAt).valueOf()) return
       if (
         IssueTempObject[
-          `${comment.author.login}-${issue.repository.name}-${issue.number}`
+        `${comment.author.login}-${issue.repository.name}-${issue.number}`
         ]
       ) {
         // closed or created action already exists, don't override with comment
@@ -396,48 +396,47 @@ async function main() {
   }
   const processAuthorGroups =
     (shouldPromptSummary = false) =>
-    ([login, details]: [string, PRGroupedByAuthor[string]]) => {
-      markdownOutput += `\n\n## ${loginToName(login)}`
-      if (shouldPromptSummary) {
-        markdownOutput += `\n\n#### Human Summary`
-        markdownOutput += `\n- _Add your summary here_`
-      }
-      if (details.PRs.length || details.PRComments.length) {
-        markdownOutput += `\n\n#### PR activity`
-      }
-      details.PRs.sort((a, b) => rating[b.state] - rating[a.state]).forEach(
-        PR => {
-          const prEmojiMap = {
-            MERGED: '💅 Merged .....',
-            OPEN: '⏳ Open ........',
-            CLOSED: '🛑 Closed ......'
-          }
-          markdownOutput += `\n- ${prEmojiMap[PR.state]} [${PR.repo} / ${
-            PR.title
-          }](${PR.url})`
+      ([login, details]: [string, PRGroupedByAuthor[string]]) => {
+        markdownOutput += `\n\n## ${loginToName(login)}`
+        if (shouldPromptSummary) {
+          markdownOutput += `\n\n#### Human Summary`
+          markdownOutput += `\n- _Add your summary here_`
         }
-      )
-      details.PRComments.forEach(PR => {
-        markdownOutput += `\n- 📝 Comment . [${PR.repo} / ${PR.title}](${PR.url})`
-      })
+        if (details.PRs.length || details.PRComments.length) {
+          markdownOutput += `\n\n#### PR activity`
+        }
+        details.PRs.sort((a, b) => rating[b.state] - rating[a.state]).forEach(
+          PR => {
+            const prEmojiMap = {
+              MERGED: '💅 Merged .....',
+              OPEN: '⏳ Open ........',
+              CLOSED: '🛑 Closed ......'
+            }
+            markdownOutput += `\n- ${prEmojiMap[PR.state]} [${PR.repo} / ${PR.title
+              }](${PR.url})`
+          }
+        )
+        details.PRComments.forEach(PR => {
+          markdownOutput += `\n- 📝 Comment . [${PR.repo} / ${PR.title}](${PR.url})`
+        })
 
-      if (
-        details.issuesClosed.length ||
-        details.issuesOpened.length ||
-        details.issuesComments.length
-      ) {
-        markdownOutput += `\n\n#### Issue activity`
+        if (
+          details.issuesClosed.length ||
+          details.issuesOpened.length ||
+          details.issuesComments.length
+        ) {
+          markdownOutput += `\n\n#### Issue activity`
+        }
+        details.issuesClosed.forEach(issue => {
+          markdownOutput += `\n- ✅ Closed ...... [${issue.repo} / ${issue.title}](${issue.url})`
+        })
+        details.issuesOpened.forEach(issue => {
+          markdownOutput += `\n- ⏳ Open ........ [${issue.repo} / ${issue.title}](${issue.url})`
+        })
+        details.issuesComments.forEach(issue => {
+          markdownOutput += `\n- 📝 Comment . [${issue.repo} / ${issue.title}](${issue.url})`
+        })
       }
-      details.issuesClosed.forEach(issue => {
-        markdownOutput += `\n- ✅ Closed ...... [${issue.repo} / ${issue.title}](${issue.url})`
-      })
-      details.issuesOpened.forEach(issue => {
-        markdownOutput += `\n- ⏳ Open ........ [${issue.repo} / ${issue.title}](${issue.url})`
-      })
-      details.issuesComments.forEach(issue => {
-        markdownOutput += `\n- 📝 Comment . [${issue.repo} / ${issue.title}](${issue.url})`
-      })
-    }
   const orderedContributors = Object.entries(prGroupedByAuthor).sort(
     ([loginA], [loginB]) => (loginToName(loginA) > loginToName(loginB) ? 1 : -1)
   )
@@ -471,8 +470,8 @@ function loginToName(login: string): string {
 function makeInnerPRQuery(repoName: string) {
   return `
   ${repoName
-    .replaceAll('.', '')
-    .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
+      .replaceAll('.', '')
+      .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
       pullRequests(first: 50, orderBy: {direction: DESC, field: UPDATED_AT}) {
         nodes {
           repository {
@@ -496,11 +495,11 @@ function makeInnerPRQuery(repoName: string) {
 function makeInnerPRCommentQuery(repoName: string, PrNumber: number) {
   return `
   ${repoName
-    .replaceAll('.', '')
-    .replaceAll(
-      '-',
-      ''
-    )}${PrNumber}: repository(name: "${repoName}" owner: "kittycad") {
+      .replaceAll('.', '')
+      .replaceAll(
+        '-',
+        ''
+      )}${PrNumber}: repository(name: "${repoName}" owner: "kittycad") {
   pullRequest(number: ${PrNumber}) {
         repository {
           name
@@ -525,8 +524,8 @@ function makeInnerPRCommentQuery(repoName: string, PrNumber: number) {
 function makeInnerIssueQuery(repoName: string) {
   return `
   ${repoName
-    .replaceAll('.', '')
-    .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
+      .replaceAll('.', '')
+      .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
       issues(first: 50 orderBy: {direction: DESC, field: UPDATED_AT}) {
         nodes {
           number
@@ -555,11 +554,11 @@ function makeInnerIssueQuery(repoName: string) {
 function makeInnerIssueCommentQuery(repoName: string, number: number) {
   return `
   ${repoName
-    .replaceAll('.', '')
-    .replaceAll(
-      '-',
-      ''
-    )}${number}: repository(name: "${repoName}" owner: "kittycad") {
+      .replaceAll('.', '')
+      .replaceAll(
+        '-',
+        ''
+      )}${number}: repository(name: "${repoName}" owner: "kittycad") {
       issue(number: ${number}) {
         title
         number
