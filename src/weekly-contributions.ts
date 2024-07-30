@@ -411,8 +411,8 @@ async function main() {
 
   let markdownOutput = markdownPrefix
 
-  markdownOutput += `\n\n ${ignoreSummariesLoginArray}`
-  markdownOutput += `\n\n ${ignoreReposArray}`
+  markdownOutput += `ignore summaries ${ignoreSummariesLoginArray}\n\n`
+  markdownOutput += `ignore repos ${ignoreReposArray}\n\n`
 
   const rating: {
     [key in PRStates]: number
