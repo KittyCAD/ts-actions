@@ -409,8 +409,6 @@ async function main() {
     }
   })
 
-  core.debug(`ignored repos: ${inspect(ignoreReposArray)}`)
-
   let markdownOutput = markdownPrefix
 
   const rating: {
@@ -483,6 +481,7 @@ async function main() {
   markdownOutput += `\n\n<br/>\n\n -- **Other Contributors** --`
   nonDevContributors.forEach(processAuthorGroups())
 
+  core.debug(`ignored repos: ${inspect(ignoreReposArray)}`)
   core.debug(`PRGroupedByAuthor: ${inspect(prGroupedByAuthor)}`)
   core.setOutput('markdown', markdownOutput)
 }
