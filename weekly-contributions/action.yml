@@ -20,6 +20,9 @@ inputs:
   ignore-summaries-login-array:
     required: false
     description: Ignore summaries for these GitHub logins
+  ignore-repos-array:
+    required: false
+    description: Ignore specific repos when generating the report
 outputs:
   markdown:
     description: Output summary
