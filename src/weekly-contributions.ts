@@ -37,7 +37,7 @@ async function main() {
     sort: 'pushed',
     per_page: 100
   })
-  const repos = data.map(({ name }) => name).filter(name => !name.startsWith('_') || !ignoreReposArray.contains(name))
+  const repos = data.map(({ name }) => name).filter(name => !name.startsWith('_') || !ignoreReposArray.includes(name))
 
   interface PRGroupedByAuthor {
     [login: string]: {
