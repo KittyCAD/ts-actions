@@ -436,11 +436,17 @@ async function main() {
               OPEN: '⏳ Open ........',
               CLOSED: '🛑 Closed ......'
             }
+            if (ignoreReposArray.includes(PR.repo)) {
+              return
+            }
             markdownOutput += `\n- ${prEmojiMap[PR.state]} [${PR.repo} / ${PR.title
               }](${PR.url})`
           }
         )
         details.PRComments.forEach(PR => {
+          if (ignoreReposArray.includes(PR.repo)) {
+            return
+          }
           markdownOutput += `\n- 📝 Comment . [${PR.repo} / ${PR.title}](${PR.url})`
         })
 
@@ -481,7 +487,6 @@ async function main() {
   markdownOutput += `\n\n<br/>\n\n -- **Other Contributors** --`
   nonDevContributors.forEach(processAuthorGroups())
 
-  core.debug(`ignored repos: ${inspect(ignoreReposArray)}`)
   core.debug(`PRGroupedByAuthor: ${inspect(prGroupedByAuthor)}`)
   core.setOutput('markdown', markdownOutput)
 }
