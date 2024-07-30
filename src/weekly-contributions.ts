@@ -410,6 +410,7 @@ async function main() {
   })
 
   let markdownOutput = markdownPrefix
+
   const rating: {
     [key in PRStates]: number
   } = {
@@ -435,11 +436,17 @@ async function main() {
               OPEN: '⏳ Open ........',
               CLOSED: '🛑 Closed ......'
             }
+            if (ignoreReposArray.includes(PR.repo)) {
+              return
+            }
             markdownOutput += `\n- ${prEmojiMap[PR.state]} [${PR.repo} / ${PR.title
               }](${PR.url})`
           }
         )
         details.PRComments.forEach(PR => {
+          if (ignoreReposArray.includes(PR.repo)) {
+            return
+          }
           markdownOutput += `\n- 📝 Comment . [${PR.repo} / ${PR.title}](${PR.url})`
         })
 
