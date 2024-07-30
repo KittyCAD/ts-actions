@@ -31,6 +31,7 @@ const github = __importStar(__nccwpck_require__(5438));
 const util_1 = __nccwpck_require__(3837);
 let loginToNameMap = {};
 let ignoreSummariesLoginArray = [];
+let ignoreReposArray = [];
 async function main() {
     const token = core.getInput('github-token');
     const dateStr = core.getInput('date');
@@ -39,6 +40,9 @@ async function main() {
     loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {};
     ignoreSummariesLoginArray =
         JSON.parse(core.getInput('ignore-summaries-login-array')) ||
+            new Array();
+    ignoreReposArray =
+        JSON.parse(core.getInput('ignore-repos-array')) ||
             new Array();
     const octokit = github.getOctokit(token);
     const date = dateStr ? new Date(dateStr) : new Date();
@@ -51,7 +55,7 @@ async function main() {
         sort: 'pushed',
         per_page: 100
     });
-    const repos = data.map(({ name }) => name).filter(name => !name.startsWith('_'));
+    const repos = data.map(({ name }) => name).filter(name => !name.startsWith('_') || !ignoreReposArray.includes(name));
     const prGroupedByAuthor = {};
     const PRsToGetCommentsFor = [];
     const chunkSize = 25;

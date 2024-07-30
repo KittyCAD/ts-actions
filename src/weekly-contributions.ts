@@ -8,6 +8,7 @@ type PRStates = IssueStates | 'MERGED'
 
 let loginToNameMap: { [key: string]: string } = {}
 let ignoreSummariesLoginArray: string[] = []
+let ignoreReposArray: string[] = []
 
 async function main() {
   const token = core.getInput('github-token')
@@ -17,6 +18,9 @@ async function main() {
   loginToNameMap = JSON.parse(core.getInput('login-to-name-map')) || {}
   ignoreSummariesLoginArray =
     JSON.parse(core.getInput('ignore-summaries-login-array')) ||
+    new Array<string>()
+  ignoreReposArray =
+    JSON.parse(core.getInput('ignore-repos-array')) ||
     new Array<string>()
 
   const octokit = github.getOctokit(token)
@@ -33,7 +37,7 @@ async function main() {
     sort: 'pushed',
     per_page: 100
   })
-  const repos = data.map(({ name }) => name).filter(name => !name.startsWith('_'))
+  const repos = data.map(({ name }) => name).filter(name => !name.startsWith('_') || !ignoreReposArray.includes(name))
 
   interface PRGroupedByAuthor {
     [login: string]: {
