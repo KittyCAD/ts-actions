@@ -353,7 +353,7 @@ async function main() {
         `
   )
   Object.values(issuesCommentsResponse).forEach(({ issue }) => {
-    if ignoreReposArray.contains(issue.repository.name) {
+    if (ignoreReposArray.contains(issue.repository.name)) {
       return
     }
     issue.comments.nodes.forEach(comment => {
