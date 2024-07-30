@@ -383,6 +383,7 @@ async function main() {
     if (ignoreReposArray.includes(issue.repo)) {
       return
     }
+    console.log(issue.repo)
     const issueInfo = {
       repo: issue.repo,
       number: issue.number,
