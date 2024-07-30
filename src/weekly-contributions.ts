@@ -256,9 +256,6 @@ async function main() {
     }
   } = {}
   Object.values(issuesResponse).forEach(pullRequest => {
-    if (ignoreReposArray.includes(pullRequest.repo)) {
-      return
-    }
     pullRequest.issues.nodes.forEach(
       ({
         title,
@@ -276,6 +273,8 @@ async function main() {
           author.login === 'sync-by-unito' ||
           author.login === 'github-actions'
         )
+          return
+        if (ignoreReposArray.includes(repository.name))
           return
         const issueInfo = {
           repo: repository.name,
