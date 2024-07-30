@@ -383,7 +383,6 @@ async function main() {
     if (ignoreReposArray.includes(issue.repo)) {
       return
     }
-    console.log(issue.repo)
     const issueInfo = {
       repo: issue.repo,
       number: issue.number,
@@ -411,6 +410,10 @@ async function main() {
   })
 
   let markdownOutput = markdownPrefix
+
+  markdownOutput += `\n\n ${ignoreSummariesLoginArray}`
+  markdownOutput += `\n\n ${ignoreReposArray}`
+
   const rating: {
     [key in PRStates]: number
   } = {

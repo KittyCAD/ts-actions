@@ -50,6 +50,10 @@ jobs:
                "pierremtb",
                "vonniwilliams"
             ]
+          ignore-repos-array: |
+            [
+              "modeling-app"
+            ]
       - name: setup gh cli
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
