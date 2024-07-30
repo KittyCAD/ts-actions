@@ -23,6 +23,7 @@ inputs:
   ignore-repos-array:
     required: false
     description: Ignore specific repos when generating the report
+    default: '[]'
 outputs:
   markdown:
     description: Output summary
