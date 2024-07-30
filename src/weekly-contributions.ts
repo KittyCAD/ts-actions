@@ -8,6 +8,7 @@ type PRStates = IssueStates | 'MERGED'
 
 let loginToNameMap: { [key: string]: string } = {}
 let ignoreSummariesLoginArray: string[] = []
+let ignoreReposArray: string[] = []
 
 async function main() {
   const token = core.getInput('github-token')
