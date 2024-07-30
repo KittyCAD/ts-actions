@@ -68,6 +68,9 @@ async function main() {
         `);
         Object.values(prsResponse).forEach(repo => {
             repo.pullRequests.nodes.forEach(({ author, repository, state, url, title, updatedAt, number }) => {
+                if (ignoreReposArray.includes(repository.name)) {
+                    return;
+                }
                 const login = author.login;
                 if (login === 'dependabot')
                     return;
@@ -110,6 +113,9 @@ async function main() {
             const isCommentingOnOwnPR = commentAuthor.login === pullRequest.author.login;
             if (isCommentingOnOwnPR)
                 return;
+            if (ignoreReposArray.includes(pullRequest.repository.name)) {
+                return;
+            }
             commentGrouping[`${commentAuthor.login}-${pullRequest.repository.name}-${pullRequest.number}`] = {
                 repo: pullRequest.repository.name,
                 number: pullRequest.number,
@@ -120,6 +126,9 @@ async function main() {
         });
     });
     Object.values(commentGrouping).forEach(comment => {
+        if (ignoreReposArray.includes(comment.repo)) {
+            return;
+        }
         if (!prGroupedByAuthor[comment.author]) {
             prGroupedByAuthor[comment.author] = {
                 PRs: [],
@@ -142,6 +151,8 @@ async function main() {
         pullRequest.issues.nodes.forEach(({ title, url, author, createdAt, updatedAt, assignees, state, closedAt, repository, number }) => {
             if (author.login === 'sync-by-unito' ||
                 author.login === 'github-actions')
+                return;
+            if (ignoreReposArray.includes(repository.name))
                 return;
             const issueInfo = {
                 repo: repository.name,
@@ -189,6 +200,9 @@ async function main() {
         }
         `);
     Object.values(issuesCommentsResponse).forEach(({ issue }) => {
+        if (ignoreReposArray.includes(issue.repository.name)) {
+            return;
+        }
         issue.comments.nodes.forEach(comment => {
             if (cutOffDate.valueOf() > new Date(comment.updatedAt).valueOf())
                 return;
@@ -208,6 +222,9 @@ async function main() {
         });
     });
     Object.values(IssueTempObject).forEach(issue => {
+        if (ignoreReposArray.includes(issue.repo)) {
+            return;
+        }
         const issueInfo = {
             repo: issue.repo,
             number: issue.number,
@@ -256,9 +273,15 @@ async function main() {
                 OPEN: '⏳ Open ........',
                 CLOSED: '🛑 Closed ......'
             };
+            if (ignoreReposArray.includes(PR.repo)) {
+                return;
+            }
             markdownOutput += `\n- ${prEmojiMap[PR.state]} [${PR.repo} / ${PR.title}](${PR.url})`;
         });
         details.PRComments.forEach(PR => {
+            if (ignoreReposArray.includes(PR.repo)) {
+                return;
+            }
             markdownOutput += `\n- 📝 Comment . [${PR.repo} / ${PR.title}](${PR.url})`;
         });
         if (details.issuesClosed.length ||
