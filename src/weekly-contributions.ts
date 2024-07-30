@@ -18,6 +18,9 @@ async function main() {
   ignoreSummariesLoginArray =
     JSON.parse(core.getInput('ignore-summaries-login-array')) ||
     new Array<string>()
+  ignoreReposArray =
+    JSON.parse(core.getInput('ignore-repos-array')) ||
+    new Array<string>()
 
   const octokit = github.getOctokit(token)
 
@@ -33,7 +36,7 @@ async function main() {
     sort: 'pushed',
     per_page: 100
   })
-  const repos = data.map(({ name }) => name).filter(name => !name.startsWith('_'))
+  const repos = data.map(({ name }) => name).filter(name => !name.startsWith('_') || !ignoreReposArray.contains(name))
 
   interface PRGroupedByAuthor {
     [login: string]: {
