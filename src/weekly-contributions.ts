@@ -89,6 +89,9 @@ async function main() {
     Object.values(prsResponse).forEach(repo => {
       repo.pullRequests.nodes.forEach(
         ({ author, repository, state, url, title, updatedAt, number }) => {
+          if ignoreReposArray.contains(repository.name) {
+            return
+          }
           const login = author.login
           if (login === 'dependabot') return
           if (cutOffDate.valueOf() > new Date(updatedAt).valueOf()) return
@@ -170,6 +173,11 @@ async function main() {
       const isCommentingOnOwnPR =
         commentAuthor.login === pullRequest.author.login
       if (isCommentingOnOwnPR) return
+
+      if ignoreReposArray.contains(pullRequest.repository.name) {
+        return
+      }
+
       commentGrouping[
         `${commentAuthor.login}-${pullRequest.repository.name}-${pullRequest.number}`
       ] = {
@@ -183,6 +191,9 @@ async function main() {
   })
 
   Object.values(commentGrouping).forEach(comment => {
+    if ignoreReposArray.contains(comment.repo) {
+      return
+    }
     if (!prGroupedByAuthor[comment.author]) {
       prGroupedByAuthor[comment.author] = {
         PRs: [],
@@ -245,6 +256,9 @@ async function main() {
     }
   } = {}
   Object.values(issuesResponse).forEach(pullRequest => {
+    if ignoreReposArray.contains(pullRequest.repository.name) {
+      return
+    }
     pullRequest.issues.nodes.forEach(
       ({
         title,
@@ -339,6 +353,9 @@ async function main() {
         `
   )
   Object.values(issuesCommentsResponse).forEach(({ issue }) => {
+    if ignoreReposArray.contains(issue.repository.name) {
+      return
+    }
     issue.comments.nodes.forEach(comment => {
       if (cutOffDate.valueOf() > new Date(comment.updatedAt).valueOf()) return
       if (
@@ -364,6 +381,9 @@ async function main() {
   })
 
   Object.values(IssueTempObject).forEach(issue => {
+    if ignoreReposArray.contains(issue.repository.name) {
+      return
+    }
     const issueInfo = {
       repo: issue.repo,
       number: issue.number,
