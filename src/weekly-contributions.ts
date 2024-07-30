@@ -409,10 +409,9 @@ async function main() {
     }
   })
 
-  let markdownOutput = markdownPrefix
+  core.debug(`ignored repos: ${inspect(ignoreReposArray)}`)
 
-  markdownOutput += `ignore summaries ${ignoreSummariesLoginArray}\n\n`
-  markdownOutput += `ignore repos ${ignoreReposArray}\n\n`
+  let markdownOutput = markdownPrefix
 
   const rating: {
     [key in PRStates]: number
