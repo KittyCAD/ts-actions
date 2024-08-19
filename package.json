@@ -46,7 +46,7 @@
     "yarn": "^1.22.19"
   },
   "devDependencies": {
-    "@types/node": "^20.1",
+    "@types/node": "^22.4",
     "@typescript-eslint/parser": "^6.3",
     "@vercel/ncc": "^0.38",
     "eslint": "^8",
