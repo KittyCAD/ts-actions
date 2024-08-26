@@ -6,6 +6,12 @@ on:
       - dist/weekly-contributions/**.js
       - .github/workflows/weekly-contributions.yml
       - weekly-contributions/action.yml
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
 jobs:
   weekly-contributions-test:
     runs-on: ubuntu-latest
