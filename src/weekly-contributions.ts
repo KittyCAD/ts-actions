@@ -502,7 +502,7 @@ function makeInnerPRQuery(repoName: string) {
   ${repoName
       .replaceAll('.', '')
       .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
-      pullRequests(first: 50, orderBy: {direction: DESC, field: UPDATED_AT}) {
+      pullRequests(first: 100, orderBy: {direction: DESC, field: UPDATED_AT}) {
         nodes {
           repository {
             name
@@ -556,7 +556,7 @@ function makeInnerIssueQuery(repoName: string) {
   ${repoName
       .replaceAll('.', '')
       .replaceAll('-', '')}: repository(name: "${repoName}" owner: "kittycad") {
-      issues(first: 50 orderBy: {direction: DESC, field: UPDATED_AT}) {
+      issues(first: 100 orderBy: {direction: DESC, field: UPDATED_AT}) {
         nodes {
           number
           title
