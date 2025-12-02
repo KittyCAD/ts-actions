@@ -16,7 +16,7 @@ jobs:
   weekly-contributions-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
       - name: Get next date
         id: nextdate
         run: echo "::set-output name=nextdate::$(date --date='+1 day' '+%Y-%m-%d')"
