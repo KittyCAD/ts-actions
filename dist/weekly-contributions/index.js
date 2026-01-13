@@ -29,6 +29,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const util_1 = __nccwpck_require__(3837);
+const promises_1 = __nccwpck_require__(8670);
 let loginToNameMap = {};
 let ignoreSummariesLoginArray = [];
 let ignoreReposArray = [];
@@ -49,16 +50,19 @@ async function main() {
     const daysInReport = parseInt(daysInReportStr);
     const cutOffDate = new Date(date);
     cutOffDate.setDate(cutOffDate.getDate() - daysInReport);
-    // 100 is the max page limit, we'll need to paginate this if it starts failing again
     const { data } = await octokit.rest.repos.listForOrg({
         org: 'KittyCAD',
         sort: 'pushed',
         per_page: 100
     });
+    await (0, promises_1.setTimeout)(1000);
     const repos = data.map(({ name }) => name).filter(name => !name.startsWith('_') || !ignoreReposArray.includes(name));
     const prGroupedByAuthor = {};
     const PRsToGetCommentsFor = [];
-    const chunkSize = 25;
+    // Some repos will have tons of information compared to others. Sometimes
+    // even 1 will have enough to start hitting rate limits. Rather than see the
+    // script die, let's lessen the impact of requests.
+    const chunkSize = 2;
     for (let i = 0; i < repos.length; i += chunkSize) {
         const reposChunk = repos.slice(i, i + chunkSize);
         const prsResponse = await octokit.graphql(`
@@ -66,6 +70,7 @@ async function main() {
           ${reposChunk.map(makeInnerPRQuery).join('\n')}
         }
         `);
+        await (0, promises_1.setTimeout)(1000);
         Object.values(prsResponse).forEach(repo => {
             repo.pullRequests.nodes.forEach(({ author, repository, state, url, title, updatedAt, number }) => {
                 if (ignoreReposArray.includes(repository.name)) {
@@ -105,6 +110,7 @@ async function main() {
         ${PRsToGetCommentsFor.map(({ repo, PRNum }) => makeInnerPRCommentQuery(repo, PRNum)).join('\n')}
         }
         `);
+    await (0, promises_1.setTimeout)(1000);
     const commentGrouping = {};
     Object.values(commentsResponse).forEach(({ pullRequest }) => {
         pullRequest.comments.nodes.forEach(({ url, author: commentAuthor }) => {
@@ -145,6 +151,7 @@ async function main() {
         ${repos.map(makeInnerIssueQuery).join('\n')}
       }
       `);
+    await (0, promises_1.setTimeout)(1000);
     const IssueTempObject = {};
     const IssueToGetCommentsOn = {};
     Object.values(issuesResponse).forEach(pullRequest => {
@@ -199,6 +206,7 @@ async function main() {
         .join('\n')}
         }
         `);
+    await (0, promises_1.setTimeout)(1000);
     Object.values(issuesCommentsResponse).forEach(({ issue }) => {
         if (ignoreReposArray.includes(issue.repository.name)) {
             return;
@@ -221,6 +229,7 @@ async function main() {
             };
         });
     });
+    await (0, promises_1.setTimeout)(1000);
     Object.values(IssueTempObject).forEach(issue => {
         if (ignoreReposArray.includes(issue.repo)) {
             return;
@@ -9571,6 +9580,14 @@ module.exports = require("punycode");
 
 "use strict";
 module.exports = require("stream");
+
+/***/ }),
+
+/***/ 8670:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("timers/promises");
 
 /***/ }),
 

@@ -43,7 +43,9 @@ jobs:
               "mansoorsiddiqui": "Mansoor Siddiqui",
               "mlfarrell": "Mike Farrell",
               "pierremtb": "Pierre Jacquier",
-              "vonniwilliams": "Vonni Williams"
+              "vonniwilliams": "Vonni Williams",
+              "lf94": "Lee",
+              "nadr0": "Kevin"
             }
           ignore-summaries-login-array: |
             [
@@ -56,11 +58,11 @@ jobs:
                "pierremtb",
                "vonniwilliams"
             ]
-      - name: setup gh cli
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-      - name: comment markdown
-        env:
-          PRNUM: ${{ github.event.pull_request.number }}
-          BODY: '${{ steps.markdown.outputs.markdown }}'
-        run: gh pr comment $PRNUM --body "$BODY"
+      # - name: setup gh cli
+      #   run: |
+      #     echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+      # - name: comment markdown
+      #   env:
+      #     PRNUM: ${{ github.event.pull_request.number }}
+      #     BODY: '${{ steps.markdown.outputs.markdown }}'
+      #   run: gh pr comment $PRNUM --body "Review the contributions via Files changed"

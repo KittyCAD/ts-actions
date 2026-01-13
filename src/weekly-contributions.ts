@@ -2,6 +2,7 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import { OctokitResponse } from '@octokit/types'
 import { inspect } from 'util'
+import { setTimeout } from 'timers/promises'
 
 type IssueStates = 'OPEN' | 'CLOSED'
 type PRStates = IssueStates | 'MERGED'
@@ -31,12 +32,12 @@ async function main() {
   const cutOffDate = new Date(date)
   cutOffDate.setDate(cutOffDate.getDate() - daysInReport)
 
-  // 100 is the max page limit, we'll need to paginate this if it starts failing again
   const { data } = await octokit.rest.repos.listForOrg({
     org: 'KittyCAD',
     sort: 'pushed',
     per_page: 100
   })
+  await setTimeout(1000)
   const repos = data.map(({ name }) => name).filter(name => !name.startsWith('_') || !ignoreReposArray.includes(name))
 
   interface PRGroupedByAuthor {
@@ -57,7 +58,11 @@ async function main() {
   }
   const prGroupedByAuthor: PRGroupedByAuthor = {}
   const PRsToGetCommentsFor: { repo: string; PRNum: number }[] = []
-  const chunkSize = 25
+
+  // Some repos will have tons of information compared to others. Sometimes
+  // even 1 will have enough to start hitting rate limits. Rather than see the
+  // script die, let's lessen the impact of requests.
+  const chunkSize = 2
   for (let i = 0; i < repos.length; i += chunkSize) {
     const reposChunk = repos.slice(i, i + chunkSize)
     const prsResponse: {
@@ -86,6 +91,7 @@ async function main() {
         }
         `
     )
+    await setTimeout(1000)
     Object.values(prsResponse).forEach(repo => {
       repo.pullRequests.nodes.forEach(
         ({ author, repository, state, url, title, updatedAt, number }) => {
@@ -153,6 +159,7 @@ async function main() {
         }
         `
   )
+  await setTimeout(1000)
   const commentGrouping: {
     [key: string]: {
       repo: string
@@ -238,6 +245,7 @@ async function main() {
       }
       `
   )
+  await setTimeout(1000)
   const IssueTempObject: {
     [key: string]: {
       repo: string
@@ -351,6 +359,7 @@ async function main() {
         }
         `
   )
+  await setTimeout(1000)
   Object.values(issuesCommentsResponse).forEach(({ issue }) => {
     if (ignoreReposArray.includes(issue.repository.name)) {
       return
@@ -378,6 +387,7 @@ async function main() {
       }
     })
   })
+  await setTimeout(1000)
 
   Object.values(IssueTempObject).forEach(issue => {
     if (ignoreReposArray.includes(issue.repo)) {
