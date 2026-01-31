@@ -35,14 +35,14 @@
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.6.0",
-    "@actions/github": "^5.0.1",
+    "@actions/github": "^9.0.0",
     "@google-cloud/storage": "^5.20.5",
     "@types/libsodium-wrappers": "^0.7.10",
     "filestack-js": "^3.25.0",
     "globby": "^13.1.1",
     "libsodium-wrappers": "^0.7.10",
     "node-fetch": "^3.2.10",
-    "openapi-typescript": "^5.4.0",
+    "openapi-typescript": "^7.10.1",
     "yarn": "^1.22.19"
   },
   "devDependencies": {
